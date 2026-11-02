@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f3eb" />
+    <title>Wordtrail — seu diário de leitura em inglês</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" data-page="home" aria-label="Wordtrail início">
+          <span class="brand-mark">w<span>✳</span></span>
+          <span>wordtrail<small>read a little. grow a lot.</small></span>
+        </a>
+        <div class="sidebar-label">SEU ESPAÇO</div>
+        <nav class="main-nav" aria-label="Navegação principal">
+          <button class="nav-link active" data-page="home"><span>⌂</span> Visão geral</button>
+          <button class="nav-link" data-page="reading"><span>◷</span> Sessão de leitura</button>
+          <button class="nav-link" data-page="practice"><span>▤</span> Hora do jogo <i id="due-count" class="nav-count">0</i></button>
+          <button class="nav-link" data-page="words"><span>▧</span> Meu vocabulário</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="sidebar-note">
+            <span class="note-spark">✳</span>
+            <p>Uma página de cada vez.<br /><strong>Você tá indo bem.</strong></p>
+            <div class="note-progress"><span id="sidebar-progress"></span></div>
+            <small id="sidebar-progress-label">0 / 30 min hoje</small>
+          </div>
+          <button class="settings-link" id="open-settings"><span>⚙</span> Configurações</button>
+          <div class="profile-chip"><span class="avatar">✿</span><span>Seu cantinho<small>aprendendo no seu ritmo</small></span></div>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="mobile-header">
+          <a class="brand" href="#" data-page="home"><span class="brand-mark">w<span>✳</span></span><span>wordtrail</span></a>
+          <button class="icon-button" id="mobile-menu" aria-label="Abrir menu">☰</button>
+        </header>
+        <div class="topbar">
+          <div><span class="date-label" id="today-label"></span><span class="topbar-subtitle">seu espaço de leitura e descobertas</span></div>
+          <div class="topbar-actions"><div id="account-controls"></div><button class="topbar-streak" data-page="reading"><span>🔥</span><strong id="top-streak">0</strong><small id="top-streak-label">dias lendo</small></button></div>
+        </div>
+        <div id="view" class="view-content"></div>
+      </main>
+    </div>
+    <div id="auth-gate" class="auth-gate" hidden>
+      <section class="auth-card" aria-labelledby="auth-title">
+        <div class="brand-mark" aria-hidden="true">w<span>✳</span></div>
+        <span class="eyebrow">SEU DIÁRIO DE LEITURA</span>
+        <h1 id="auth-title">Seu progresso, em qualquer lugar</h1>
+        <p>Entre com Google para sincronizar palavras, sessões e revisões entre seu computador e celular.</p>
+        <button id="google-sign-in" class="button auth-google-button" data-action="sign-in">Continuar com Google</button>
+        <button id="retry-cloud-load" class="button outline auth-retry-button" data-action="retry-cloud-load" hidden>Tentar carregar de novo</button>
+        <p id="auth-status" class="auth-status" role="status"></p>
+      </section>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="modal-root"></div>
+  </body>
+</html>
