@@ -507,13 +507,60 @@ async function lookupWord(term) {
 }
 
 async function getDictionaryEntry(term) {
-  const url = new URL("/api/dictionary", window.location.origin);
-  url.searchParams.set("word", term);
-  const response = await fetch(url);
-  if (response.ok) return response.json();
+  const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
   if (response.status === 404) return null;
-  const error = await response.json().catch(() => null);
-  throw new Error(error?.error || `A API de dicionário respondeu com erro (${response.status}).`);
+  if (!response.ok) {
+    throw new Error(`A API de dicionário respondeu com erro (${response.status}).`);
+  }
+  const entries = await response.json();
+  if (!Array.isArray(entries) || !entries.length) return null;
+  const entry = entries[0];
+  const definitions = [];
+  const partsOfSpeech = [];
+  for (const meaning of entry.meanings || []) {
+    if (meaning.partOfSpeech && !partsOfSpeech.includes(meaning.partOfSpeech)) partsOfSpeech.push(meaning.partOfSpeech);
+    for (const item of meaning.definitions || []) {
+      if (item.definition && !definitions.includes(item.definition)) definitions.push(item.definition);
+      if (definitions.length === 3) break;
+    }
+    if (definitions.length === 3) break;
+  }
+  const phonetics = Array.isArray(entry.phonetics) ? entry.phonetics : [];
+  return {
+    word: entry.word || term,
+    definition: definitions.map((definition, index) => `${index + 1}. ${definition}`).join("\n"),
+    partOfSpeech: partsOfSpeech.join(", "),
+    phonetic: (entry.phonetic || phonetics.find((item) => item.text)?.text || "").replace(/^\/|\/$/g, ""),
+    audio: phonetics.find((item) => /^https:\/\//i.test(item.audio || ""))?.audio || "",
+    definitionSource: "dictionaryapi.dev"
+  };
+}
+
+async function getOnlinePracticeWords(count = 20) {
+  const response = await fetch(`https://random-word-api.herokuapp.com/word?number=${Math.min(40, count * 2)}`);
+  if (!response.ok) {
+    throw new Error(`A API de palavras aleatórias respondeu com erro (${response.status}).`);
+  }
+  const randomWords = await response.json();
+  if (!Array.isArray(randomWords)) {
+    throw new Error("A API de palavras aleatórias retornou dados inválidos.");
+  }
+  const terms = [...new Set(randomWords.filter((word) => typeof word === "string" && /^[a-z]+(?:[-'][a-z]+)*$/i.test(word)))];
+  const words = [];
+  for (let start = 0; start < terms.length && words.length < count; start += 8) {
+    const outcomes = await Promise.allSettled(terms.slice(start, start + 8).map(async (term) => {
+      const entry = await getDictionaryEntry(term);
+      if (!entry?.definition) return null;
+      return { term: entry.word, definition: entry.definition, partOfSpeech: entry.partOfSpeech };
+    }));
+    words.push(...outcomes
+      .filter((outcome) => outcome.status === "fulfilled" && outcome.value)
+      .map((outcome) => outcome.value));
+  }
+  if (!words.length) {
+    throw new Error("As APIs públicas não retornaram palavras para praticar. Tente novamente.");
+  }
+  return words.slice(0, count);
 }
 
 function trackSessionLookup(session, word, lookupNumber, at) {
@@ -893,12 +940,7 @@ async function beginPractice() {
     document.querySelectorAll("[data-source], [data-mode], [data-action='start-practice']").forEach((button) => { button.disabled = true; });
     document.querySelector("[data-action='start-practice']").textContent = "Carregando palavras…";
     try {
-      const response = await fetch("/api/dictionary/practice?count=20");
-      const result = await response.json();
-      if (!response.ok || !Array.isArray(result.words) || result.words.length === 0) {
-        throw new Error(result.error || "As APIs públicas não retornaram palavras para praticar.");
-      }
-      dictionaryWords = result.words;
+      dictionaryWords = await getOnlinePracticeWords();
     } catch (error) {
       practiceLoading = false;
       console.error("Could not load words for dictionary practice.", error);

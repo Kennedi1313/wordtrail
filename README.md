@@ -20,11 +20,11 @@ Sem configuração do Supabase, o app continua em modo local no navegador. Para 
 1. Crie um projeto no [Supabase](https://supabase.com/dashboard). O plano Free é suficiente para começar; projetos Free podem pausar após uma semana sem atividade.
 2. A migração inicial já foi aplicada ao projeto conectado. O SQL correspondente está em [supabase/schema.sql](./supabase/schema.sql) e versionado em [supabase/migrations](./supabase/migrations); isso cria uma tabela JSONB por conta com políticas RLS, para cada pessoa autenticada ler e alterar somente a própria linha.
 3. Em **Project Settings → API**, copie a Project URL e a chave **publishable** (ou a chave legada `anon`). Nunca use `service_role` no app.
-4. Em **Authentication → URL Configuration**, defina o Site URL como o domínio de produção da Vercel e adicione à Redirect URLs:
+4. Em **Authentication → URL Configuration**, defina o Site URL como `https://wordtrail-beryl.vercel.app` e adicione à Redirect URLs:
    - `http://localhost:5173`
-   - `https://SEU-DOMINIO-VERCEL`
+   - `https://wordtrail-beryl.vercel.app`
 5. Em **Authentication → Providers → Google**, habilite Google e copie o callback URL indicado pelo Supabase.
-6. No [Google Cloud Console](https://console.cloud.google.com/), configure a tela de consentimento OAuth e crie um OAuth Client ID do tipo Web. Adicione `http://localhost:5173` e o domínio Vercel em **Authorized JavaScript origins**; adicione o callback do Supabase em **Authorized redirect URIs**. Cole o Client ID e o Client Secret no provedor Google do Supabase — o secret fica somente no Supabase, nunca neste repositório.
+6. No [Google Cloud Console](https://console.cloud.google.com/), configure a tela de consentimento OAuth e crie um OAuth Client ID do tipo Web. Adicione `http://localhost:5173` e `https://wordtrail-beryl.vercel.app` em **Authorized JavaScript origins**; adicione o callback do Supabase em **Authorized redirect URIs**. Cole o Client ID e o Client Secret no provedor Google do Supabase — o secret fica somente no Supabase, nunca neste repositório.
 7. Para desenvolvimento, copie `.env.example` para `.env.local` e substitua os valores:
 
 ```sh
@@ -43,7 +43,7 @@ Reinicie `npm run dev` após alterar o arquivo. Com Supabase configurado, o app 
 4. Faça deploy/redeploy. Essas variáveis `VITE_` entram no bundle público: são identificadores/chaves públicas, protegidos pelas políticas RLS. Não publique a `service_role` nem o Client Secret do Google.
 5. Copie a URL final `https://...vercel.app` e adicione-a nas Redirect URLs do Supabase e nos Authorized JavaScript origins do OAuth Client Google. Use também como Site URL do Supabase. Faça um redeploy se tiver alterado as variáveis.
 
-As rotas em `api/` são funções serverless da Vercel para consultar as APIs públicas. O app não precisa de um servidor permanente nem de Docker.
+As rotas em `api/` são funções serverless da Vercel para tradução e sugestões. Definições e palavras aleatórias são consultadas diretamente pelo navegador nas APIs públicas: a API do dicionário bloqueia algumas requisições server-to-server feitas pela Vercel. O app não precisa de um servidor permanente nem de Docker.
 
 ## Dados e migração
 
