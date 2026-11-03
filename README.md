@@ -11,7 +11,15 @@ npm install
 npm run dev
 ```
 
-Abra [http://localhost:5173](http://localhost:5173). O Vite serve a interface e encaminha `/api` ao servidor Node leve na porta `4175`; não há serviços de tradução, dicionário ou modelos de IA locais. A porta `4173` fica livre caso exista um servidor antigo do Wordtrail rodando.
+Abra [http://localhost:3000](http://localhost:3000). O app usa Next.js com App Router e TypeScript.
+
+Validação local:
+
+```sh
+npm run typecheck
+npm run build
+npm run start
+```
 
 Sem configuração do Supabase, o app continua em modo local no navegador. Para testar Google Auth localmente, crie `.env.local` com base em [.env.example](./.env.example) e use as configurações de OAuth descritas abaixo.
 
@@ -38,9 +46,9 @@ Reinicie `npm run dev` após alterar o arquivo. Com Supabase configurado, o app 
 1. Envie este projeto para um repositório Git e importe-o no [Vercel](https://vercel.com/new).
 2. Use os padrões Vite: build `npm run build`, diretório de saída `dist`.
 3. Em **Project → Settings → Environment Variables**, cadastre:
-   - `VITE_SUPABASE_URL` — Project URL do Supabase.
-   - `VITE_SUPABASE_ANON_KEY` — chave publishable (ou `anon`) do Supabase.
-4. Faça deploy/redeploy. Essas variáveis `VITE_` entram no bundle público: são identificadores/chaves públicas, protegidos pelas políticas RLS. Não publique a `service_role` nem o Client Secret do Google.
+   - `NEXT_PUBLIC_SUPABASE_URL` — Project URL do Supabase.
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — chave publishable (ou `anon`) do Supabase.
+4. Faça deploy/redeploy. Essas variáveis `NEXT_PUBLIC_` entram no bundle público: são identificadores/chaves públicas, protegidos pelas políticas RLS. O projeto também aceita temporariamente os nomes antigos `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` para não quebrar instalações existentes. Não publique a `service_role` nem o Client Secret do Google.
 5. Copie a URL final `https://...vercel.app` e adicione-a nas Redirect URLs do Supabase e nos Authorized JavaScript origins do OAuth Client Google. Use também como Site URL do Supabase. Faça um redeploy se tiver alterado as variáveis.
 
 As rotas em `api/` são funções serverless da Vercel para tradução e sugestões. Definições e palavras aleatórias são consultadas diretamente pelo navegador nas APIs públicas: a API do dicionário bloqueia algumas requisições server-to-server feitas pela Vercel. O app não precisa de um servidor permanente nem de Docker.
@@ -57,3 +65,9 @@ O Supabase guarda uma linha JSONB por usuário com vocabulário, sessões, revis
 - **Palavras aleatórias para os jogos:** [Random Word API](https://random-word-api.herokuapp.com/).
 
 Essas APIs podem ter limites ou ficar indisponíveis. O serviço de áudio nem sempre oferece arquivo para cada palavra.
+
+## Arquitetura
+
+As rotas ficam em `app/` e cada tela possui uma página independente. Componentes visuais ficam em `components/`, comportamentos interativos em `hooks/`, regras de domínio em `services/`, persistência em `lib/storage/`, Supabase em `lib/supabase/` e contratos de dados em `types/`. A interface usa React para estado, eventos e navegação, sem `innerHTML`, `querySelector` ou listeners globais.
+
+As funcionalidades principais estão separadas entre `components/vocabulary`, `components/reading` e `components/practice`. A autenticação está em `hooks/use-auth.ts`; a integração de sincronização está em `services/sync-service.ts`; e as regras de revisão estão em `services/practice-service.ts`.
