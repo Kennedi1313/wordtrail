@@ -151,7 +151,7 @@ function updateAuthGate(message = "") {
   const status = document.querySelector("#auth-status");
   const retry = document.querySelector("#retry-cloud-load");
   if (status) {
-    status.textContent = message || (authReady ? "Entre com Google para sincronizar suas palavras, leituras e revisões entre dispositivos." : "Conectando com segurança à sua conta…");
+    status.textContent = message || (authReady ? "" : "Conectando com segurança à sua conta…");
   }
   if (retry) retry.hidden = !message.startsWith("Não consegui carregar");
   const signIn = document.querySelector("#google-sign-in");
@@ -162,12 +162,12 @@ function updateAccountControls() {
   const controls = document.querySelector("#account-controls");
   if (!controls) return;
   if (!isSupabaseConfigured) {
-    controls.innerHTML = `<span class="account-local-note">Sincronização não configurada</span>`;
+    controls.innerHTML = `<div class="sidebar-account-note"><span class="account-avatar" aria-hidden="true">✿</span><span>Salvo neste navegador</span></div>`;
     return;
   }
   controls.innerHTML = sessionUser
-    ? `<span class="account-email">${escapeHtml(sessionUser.email || "Conta Google")}</span><button class="button outline small" data-action="sign-out">Sair</button>`
-    : `<button class="button outline small" data-action="sign-in">Entrar com Google</button>`;
+    ? `<div class="sidebar-account-info"><span class="account-avatar" aria-hidden="true">G</span><span class="account-email" title="${escapeHtml(sessionUser.email || "Conta Google")}">${escapeHtml(sessionUser.email || "Conta Google")}</span><button class="button outline small" data-action="sign-out" aria-label="Sair da conta" title="Sair da conta">Sair</button></div>`
+    : `<button class="button outline sidebar-sign-in" data-action="sign-in">Entrar com Google</button>`;
 }
 
 async function loadSignedInAccount(user) {
@@ -340,7 +340,20 @@ function todaySessions() {
 }
 
 function todayMinutes() {
-  return todaySessions().reduce((total, session) => total + session.minutes, 0);
+  return Math.floor(todayReadingSeconds() / 60);
+}
+
+function todayReadingSeconds() {
+  const completedSeconds = todaySessions().reduce((total, session) => {
+    const seconds = Number.isFinite(session.durationSeconds) ? session.durationSeconds : (session.minutes || 0) * 60;
+    return total + seconds;
+  }, 0);
+  const active = state.activeReadingSession;
+  if (!active || active.date !== dateKey()) return completedSeconds;
+  const activeSeconds = Number.isFinite(active.durationSeconds)
+    ? active.durationSeconds
+    : Math.max(0, Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 1000));
+  return completedSeconds + activeSeconds;
 }
 
 function dueWords() {
@@ -384,11 +397,24 @@ function updateChrome() {
   document.querySelectorAll(".nav-link").forEach((item) => item.classList.toggle("active", item.dataset.page === activePage));
   const streak = currentStreak();
   document.querySelector("#top-streak").textContent = streak;
-  document.querySelector("#top-streak-label").textContent = streak === 1 ? "dia lendo" : "dias lendo";
   document.querySelector("#due-count").textContent = dueWords().length;
-  const progress = Math.min(100, Math.round((todayMinutes() / Math.max(1, settings.dailyGoal)) * 100));
-  document.querySelector("#sidebar-progress").style.width = `${progress}%`;
-  document.querySelector("#sidebar-progress-label").textContent = `${todayMinutes()} / ${settings.dailyGoal} min hoje`;
+  updateReadingProgress();
+}
+
+function updateReadingProgress() {
+  const minutes = todayMinutes();
+  const progress = Math.min(100, Math.round((todayReadingSeconds() / (Math.max(1, settings.dailyGoal) * 60)) * 100));
+  const sidebarProgress = document.querySelector("#sidebar-progress");
+  if (sidebarProgress) sidebarProgress.style.width = `${progress}%`;
+  const sidebarLabel = document.querySelector("#sidebar-progress-label");
+  if (sidebarLabel) sidebarLabel.textContent = `${minutes} de ${settings.dailyGoal} min hoje`;
+  const ring = document.querySelector("#daily-goal-ring");
+  if (ring) {
+    ring.style.setProperty("--progress", `${progress}%`);
+    ring.querySelector("span").textContent = `${progress}%`;
+  }
+  const goalMinutes = document.querySelector("#today-goal-minutes");
+  if (goalMinutes) goalMinutes.textContent = minutes;
 }
 
 function render() {
@@ -404,24 +430,25 @@ function renderHome() {
   const activity = recentActivity();
   const top = words.slice(0, 5);
   const readPages = todaySessions().reduce((sum, session) => sum + (session.pages || 0), 0);
-  const goalProgress = Math.min(100, Math.round(todayMinutes() / Math.max(1, settings.dailyGoal) * 100));
+  const goalProgress = Math.min(100, Math.round(todayReadingSeconds() / (Math.max(1, settings.dailyGoal) * 60) * 100));
   view.innerHTML = `
     <section class="page-intro"><span class="eyebrow">SEU DIÁRIO DE LEITURA</span><h1>Oi, que bom te ver por aqui <span aria-hidden="true">✿</span></h1><p>Um cantinho pra acompanhar suas leituras e guardar cada palavra nova.</p></section>
     <section class="home-grid">
       <div class="hero-card"><div class="hero-copy"><span class="eyebrow">UM PASSINHO DE CADA VEZ</span><h2>${state.activeReadingSession ? "Sua leitura está acontecendo." : "Pronta pra começar a leitura?"}</h2><p>${state.activeReadingSession ? "Pesquise palavras por aqui e volte pro seu livro. O cronômetro continua contando." : "Inicie uma sessão, leia no seu ritmo e pesquise palavras sem perder o fio."}</p><button class="button" data-action="${state.activeReadingSession ? "resume-reading" : "start-reading"}">${state.activeReadingSession ? "Continuar sessão →" : "▶ &nbsp; Iniciar leitura"}</button></div><div class="hero-illustration" aria-hidden="true">📖</div></div>
-      <div class="goal-card"><div class="goal-head"><div><h3>Sua meta de leitura</h3><p>cada minuto conta</p></div><span class="goal-icon">◷</span></div><div class="goal-meter"><div class="ring" style="--progress:${goalProgress}%"><span>${goalProgress}%</span></div><div class="goal-copy"><strong>${todayMinutes()} <small>min</small></strong><small>de ${settings.dailyGoal} min hoje</small></div></div><div class="goal-bottom"><span>${readPages ? `${readPages} páginas registradas` : "Vai no seu ritmo ✿"}</span><button class="text-button" data-page="reading">Registrar +</button></div></div>
+      <div class="goal-card"><div class="goal-head"><div><h3>Sua meta de leitura</h3></div><span class="goal-icon">◷</span></div><div class="goal-meter"><div class="ring" id="daily-goal-ring" style="--progress:${goalProgress}%"><span>${goalProgress}%</span></div><div class="goal-copy"><strong><span id="today-goal-minutes">${todayMinutes()}</span> <small>min</small></strong><small>de ${settings.dailyGoal} min hoje</small></div></div><div class="goal-bottom"><span>${readPages ? `${readPages} páginas registradas` : ""}</span><button class="text-button" data-page="reading">Registrar +</button></div></div>
     </section>
     <section class="stats-row">
-      <div class="stat-card"><span class="stat-icon">▧</span><div><strong>${state.words.length}</strong><small>palavras guardadas</small></div></div>
-      <div class="stat-card"><span class="stat-icon">⌕</span><div><strong>${state.words.reduce((sum, word) => sum + word.lookups, 0)}</strong><small>pesquisas feitas</small></div></div>
-      <div class="stat-card"><span class="stat-icon">🔥</span><div><strong>${currentStreak()}</strong><small>${currentStreak() === 1 ? "dia lendo em sequência" : "dias lendo em sequência"}</small></div></div>
-      <div class="stat-card"><span class="stat-icon">✳</span><div><strong>${state.reviews.length}</strong><small>revisões concluídas</small></div></div>
+      <div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${state.words.length}</strong><small>palavras guardadas</small></div>
+      <div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${state.words.reduce((sum, word) => sum + word.lookups, 0)}</strong><small>pesquisas feitas</small></div>
+      <div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${currentStreak()}</strong><small>${currentStreak() === 1 ? "dia lendo em sequência" : "dias lendo em sequência"}</small></div>
+      <div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${state.reviews.length}</strong><small>revisões concluídas</small></div>
     </section>
     <section class="lower-grid">
       <div><div class="section-heading"><div><h2>Palavras que mais aparecem</h2><p>As suas descobertas mais frequentes</p></div><button class="text-button" data-page="words">Ver tudo →</button></div><div class="panel">${top.length ? `<div class="word-list">${top.map(wordRow).join("")}</div>` : emptyState("🌱", "Sua primeira palavra começa aqui", "Pesquise algo que encontrou no livro e seu vocabulário vai crescendo.")}</div></div>
       <div><div class="section-heading"><div><h2>Seu caminho recente</h2><p>Pequenas conquistas do dia a dia</p></div></div><div class="panel">${activity.length ? `<div class="activity-list">${activity.map((item) => `<div class="activity-item"><span class="activity-dot"></span><div><p>${item.text}</p><small>${item.meta}</small></div></div>`).join("")}</div>` : emptyState("☀️", "Tudo começa na próxima página", "Sua atividade vai aparecer aqui assim que você começar.")}</div></div>
     </section>
-    <section class="section-heading"><div><h2>Uma pausa de cinco minutinhos?</h2><p>Relembre palavras enquanto elas ainda estão fresquinhas.</p></div><button class="button small" data-page="practice">Começar jogo →</button></section>`;
+    <section class="section-heading game-section-heading"><div><h2>Uma pausa de cinco minutinhos?</h2><p>Relembre palavras enquanto elas ainda estão fresquinhas.</p></div><button class="button" data-page="practice">Começar jogo →</button></section>`;
+  if (state.activeReadingSession && !state.activeReadingSession.endedAt) startReadingTimer();
 }
 
 function emptyState(emoji, title, description) {
@@ -609,7 +636,7 @@ function renderWords() {
   view.innerHTML = `
     <section class="page-intro"><span class="eyebrow">SEU VOCABULÁRIO PESSOAL</span><h1>Palavras que você encontrou</h1><p>Cada pesquisa vira uma descoberta guardada pra depois.</p></section>
     <div class="stats-row"><div class="stat-card"><span class="stat-icon">▧</span><div><strong>${state.words.length}</strong><small>palavras diferentes</small></div></div><div class="stat-card"><span class="stat-icon">⌕</span><div><strong>${state.words.reduce((sum, word) => sum + word.lookups, 0)}</strong><small>pesquisas no total</small></div></div><div class="stat-card"><span class="stat-icon">✳</span><div><strong>${dueWords().length}</strong><small>prontas pra revisar</small></div></div><div class="stat-card"><span class="stat-icon">🔥</span><div><strong>${currentStreak()}</strong><small>dias lendo em sequência</small></div></div></div>
-    <div class="words-controls"><input class="field" id="words-filter" type="search" placeholder="Filtrar por palavra ou tradução..." value="${escapeHtml(wordsFilter)}" /><button class="button small" data-page="lookup">+ Pesquisar</button></div>
+    <div class="words-controls"><input class="field" id="words-filter" type="search" placeholder="Filtrar por palavra ou tradução..." value="${escapeHtml(wordsFilter)}" /><button class="button small" data-page="lookup">Pesquisar</button></div>
     <div class="word-table">${words.length ? words.map((word) => `<div class="word-row"><span class="word-letter">${escapeHtml(word.term[0])}</span><div class="table-detail"><strong>${escapeHtml(word.term)}</strong><small>${escapeHtml(word.translation || "Tradução indisponível")} · ${escapeHtml(word.definition || "Definição indisponível")}</small></div><span class="table-stat">${word.lookups}× consulta${word.lookups === 1 ? "" : "s"}</span><button class="delete-word" data-delete-word="${escapeHtml(word.normalized)}" title="Remover palavra" aria-label="Remover ${escapeHtml(word.term)}">×</button></div>`).join("") : emptyState(state.words.length ? "🔎" : "🌱", state.words.length ? "Nenhuma palavra encontrada" : "Seu vocabulário começa com uma curiosidade", state.words.length ? "Tente outra palavra ou tradução." : "Pesquise uma palavra durante a leitura pra começar.")}</div>`;
 }
 
@@ -638,10 +665,10 @@ function renderActiveReading(session) {
     .filter(Boolean);
   const elapsed = Math.max(0, Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000));
   view.innerHTML = `
-    <section class="reading-session-head"><div><span class="eyebrow">SESSÃO DE LEITURA EM ANDAMENTO</span><h1>Vai no seu ritmo ✿</h1><p>Deixa essa tela do lado do seu livro. O cronômetro continua enquanto você lê.</p></div><div class="reading-session-controls"><div class="live-timer"><span class="timer-pulse" aria-label="Gravando leitura"></span><span class="live-timer-copy"><strong id="reading-timer">${formatElapsed(elapsed)}</strong><small>tempo de leitura</small></span></div><button class="button stop-reading-button" data-action="finish-reading" aria-label="Finalizar sessão de leitura" ${searchBusy ? "disabled" : ""}><span class="stop-icon" aria-hidden="true"></span><span>Finalizar</span></button></div></section>
+    <section class="reading-session-head"><div><span class="eyebrow">SESSÃO DE LEITURA EM ANDAMENTO</span><h1>Vai no seu ritmo ✿</h1><p>Deixa essa tela do lado do seu livro. O cronômetro continua enquanto você lê.</p></div><div class="reading-session-controls"><div class="live-timer"><span class="timer-pulse" aria-label="Gravando leitura"></span><span class="live-timer-copy"><strong id="reading-timer">${formatElapsed(elapsed)}</strong><small>tempo de leitura</small></span></div><button class="button stop-reading-button" data-action="finish-reading" aria-label="Finalizar sessão de leitura" ${searchBusy ? "disabled" : ""}><svg class="stop-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1"></rect></svg><span>Finalizar</span></button></div></section>
     <section class="reading-live-layout">
-      <div class="reading-search-column"><div class="search-autocomplete"><form id="lookup-form" class="search-box" role="search"><input id="lookup-input" type="search" autocomplete="off" placeholder="Qual palavra te parou?" aria-label="Palavra em inglês" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="lookup-suggestions" aria-expanded="false" required /><button class="button" type="submit" ${searchBusy ? "disabled" : ""}>${searchBusy ? "Buscando..." : "Pesquisar ↗"}</button></form><div id="lookup-suggestions" class="suggestion-list" role="listbox" aria-label="Sugestões de palavras" hidden></div></div><p class="lookup-hint">Definições, tradução, sugestões e áudio vêm de APIs públicas. Suas palavras continuam salvas neste navegador.</p>
-        <div id="search-result">${searchResult ? renderSearchResult(searchResult) : `<div class="empty-large empty-state" style="margin-top:16px"><div class="empty-emoji">🔎</div><strong>Seu próximo achado tá esperando</strong>Digite a palavra que encontrou e volte pro livro.</div>`}</div>
+      <div class="reading-search-column"><div class="search-autocomplete"><form id="lookup-form" class="search-box" role="search"><input id="lookup-input" type="search" autocomplete="off" placeholder="Qual palavra te parou?" aria-label="Palavra em inglês" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="lookup-suggestions" aria-expanded="false" required /><button class="button search-submit" type="submit" aria-label="${searchBusy ? "Buscando palavra" : "Pesquisar palavra"}" title="${searchBusy ? "Buscando..." : "Pesquisar"}" ${searchBusy ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"></circle><path d="m15.5 15.5 4.2 4.2"></path></svg></button></form><div id="lookup-suggestions" class="suggestion-list" role="listbox" aria-label="Sugestões de palavras" hidden></div></div>
+        <div id="search-result">${searchResult ? renderSearchResult(searchResult) : `<div class="empty-large empty-state"><div class="empty-emoji">🔎</div><strong>Seu próximo achado tá esperando</strong>Digite a palavra que encontrou e volte pro livro.</div>`}</div>
       </div>
       <aside class="reading-session-sidebar"><div class="panel"><div class="side-panel-title"><h3>Palavras desta sessão</h3><span class="word-count">${session.lookups.length} pesquisa${session.lookups.length === 1 ? "" : "s"}</span></div>${words.length ? `<div class="word-list">${[...words].reverse().map((word) => {
     const count = session.lookups.filter((lookup) => lookup.normalized === word.normalized).length;
@@ -649,10 +676,22 @@ function renderActiveReading(session) {
   }).join("")}</div>` : emptyState("🌱", "Ainda sem pesquisas", "As palavras que você consultar durante esta leitura aparecem aqui.")}</div>
       </aside>
     </section>`;
+  startReadingTimer();
+}
+
+function startReadingTimer() {
+  clearInterval(readingTimer);
   readingTimer = setInterval(() => {
-    if (!state.activeReadingSession || state.activeReadingSession.endedAt) return;
+    const active = state.activeReadingSession;
+    if (!active || active.endedAt) {
+      clearInterval(readingTimer);
+      readingTimer = null;
+      return;
+    }
+    const elapsed = Math.max(0, Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 1000));
     const timer = document.querySelector("#reading-timer");
-    if (timer) timer.textContent = formatElapsed(Math.floor((Date.now() - new Date(state.activeReadingSession.startedAt).getTime()) / 1000));
+    if (timer) timer.textContent = formatElapsed(elapsed);
+    updateReadingProgress();
   }, 1000);
 }
 
@@ -895,7 +934,7 @@ function renderPractice() {
   if (practiceSummary) {
     view.innerHTML = `
       <section class="page-intro"><span class="eyebrow">PAUSA PRA FIXAR</span><h1>Hora do jogo! <span aria-hidden="true">✳</span></h1><p>Uma pausa curtinha também é progresso.</p></section>
-      <section class="session-card practice-complete"><div class="finish-emoji">🎉</div><span class="eyebrow">RODADA CONCLUÍDA</span><h2>Mandou bem nessa pausa!</h2><p>${escapeHtml(practiceSummary.message)}</p><div class="practice-complete-stats"><div><strong>${practiceSummary.correct}</strong><small>lembradas</small></div><div><strong>${practiceSummary.answered}</strong><small>respondidas</small></div><div><strong>${escapeHtml(practiceSummary.duration)}</strong><small>de prática</small></div></div><button class="button" data-action="dismiss-summary">Voltar aos jogos →</button></section>`;
+      <section class="session-card practice-complete"><div class="finish-emoji">🎉</div><span class="eyebrow">RODADA CONCLUÍDA</span><h2>Mandou bem nessa pausa!</h2><p>${escapeHtml(practiceSummary.message)}</p><div class="practice-complete-stats"><div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${practiceSummary.correct}</strong><small>lembradas</small></div><div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${practiceSummary.answered}</strong><small>respondidas</small></div><div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${practiceSummary.durationMinutes}</strong><small>minutos de prática</small></div></div><button class="button practice-return-button" data-action="dismiss-summary">Voltar aos jogos →</button></section>`;
     return;
   }
   const practiceWords = getPracticeWords();
@@ -918,7 +957,7 @@ function renderPractice() {
     <div class="panel practice-tip"><div class="word-row"><span class="word-letter">✿</span><div class="word-meta"><strong>Uma sessão de 5 minutos</strong><small>${practiceSource === "dictionary" ? "Palavras e definições carregadas de APIs públicas." : "Flashcards mostram a definição; na múltipla escolha, você associa a palavra à tradução."}</small></div></div></div>
       <button class="button" data-action="start-practice" ${canStart ? "" : "disabled"}>Começar a jogar →</button>
     </div>
-    <section class="section-heading"><div><h2>Seu progresso nas revisões</h2><p>Aprender também é tentar, errar e tentar de novo.</p></div></section><div class="stats-row"><div class="stat-card"><span class="stat-icon">▤</span><div><strong>${state.reviews.length}</strong><small>respostas tentadas</small></div></div><div class="stat-card"><span class="stat-icon">✳</span><div><strong>${state.reviews.filter((review) => review.correct).length}</strong><small>lembradas de primeira</small></div></div><div class="stat-card"><span class="stat-icon">◷</span><div><strong>${due}</strong><small>palavras prontas agora</small></div></div><div class="stat-card"><span class="stat-icon">▧</span><div><strong>${practiceWords.length}</strong><small>palavras no vocabulário</small></div></div></div>`;
+    <section class="section-heading"><div><h2>Seu progresso nas revisões</h2><p>Aprender também é tentar, errar e tentar de novo.</p></div></section><div class="stats-row practice-stats"><div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${state.reviews.length}</strong><small>respostas tentadas</small></div><div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${state.reviews.filter((review) => review.correct).length}</strong><small>lembradas de primeira</small></div><div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${due}</strong><small>palavras prontas agora</small></div><div class="stat-card stat-card-home"><strong class="stat-icon stat-value">${practiceWords.length}</strong><small>palavras no vocabulário</small></div></div>`;
 }
 
 function getPracticeWords() {
@@ -998,7 +1037,7 @@ function finishPractice() {
     message: session.answeredCount
       ? `Você lembrou ${session.correct} de ${session.answeredCount} ${session.answeredCount === 1 ? "palavra" : "palavras"}. Volta pro seu livro com mais uma vitória no bolso.`
       : "Rodada encerrada. Quando quiser, você pode tentar de novo.",
-    duration: elapsedSeconds < 60 ? "Menos de 1 min" : formatDuration(elapsedSeconds),
+    durationMinutes: Math.floor(elapsedSeconds / 60),
     correct: session.correct,
     answered: session.answeredCount
   };
@@ -1189,6 +1228,10 @@ document.addEventListener("click", async (event) => {
   }
   if (target.id === "mobile-menu") {
     document.querySelector(".sidebar").classList.toggle("open");
+    return;
+  }
+  if (target.id === "mobile-menu-close") {
+    document.querySelector(".sidebar").classList.remove("open");
     return;
   }
   if (target.dataset.action === "start-reading") {
