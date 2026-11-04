@@ -40,6 +40,22 @@ function createWordtrailState() {
     setReady(true);
   }, []);
   useEffect(() => {
+    if (!ready) return;
+    const root = document.documentElement;
+    const applyTheme = () => {
+      const isDark =
+        settings.theme === "dark" ||
+        (settings.theme === "system" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches);
+      root.dataset.theme = isDark ? "dark" : "light";
+    };
+    applyTheme();
+    if (settings.theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    media.addEventListener("change", applyTheme);
+    return () => media.removeEventListener("change", applyTheme);
+  }, [settings.theme, ready]);
+  useEffect(() => {
     if (ready) saveState(state);
   }, [state, ready]);
   useEffect(() => {

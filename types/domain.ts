@@ -51,7 +51,8 @@ export type Review = {
   mode: string;
   correct: boolean;
 };
-export type UserSettings = { dailyGoal: number };
+export type ThemeMode = "system" | "light" | "dark";
+export type UserSettings = { dailyGoal: number; theme: ThemeMode };
 export type AppState = {
   words: Word[];
   readingSessions: ReadingSession[];
@@ -65,4 +66,4 @@ export const DEFAULT_STATE: AppState = {
   reviews: [],
   activeReadingSession: null,
 };
-export const DEFAULT_SETTINGS: UserSettings = { dailyGoal: 30 };
+export const DEFAULT_SETTINGS: UserSettings = { dailyGoal: 30, theme: "system" };

@@ -1,7 +1,11 @@
 "use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useWordtrail } from "@/hooks/use-wordtrail";
 export default function Page() {
   const { settings, setSettings, ready } = useWordtrail();
+  const [saved, setSaved] = useState(false);
+  const router = useRouter();
   return (
     <section
       className="modal-backdrop"
@@ -33,7 +37,10 @@ export default function Page() {
           max="1440"
           value={ready ? settings.dailyGoal : 30}
           onChange={(event) =>
-            setSettings({ dailyGoal: Math.max(1, Number(event.target.value)) })
+            setSettings({
+              ...settings,
+              dailyGoal: Math.max(1, Number(event.target.value)),
+            })
           }
         />
         <p className="modal-note">
@@ -42,9 +49,21 @@ export default function Page() {
           públicas podem ter limites ou indisponibilidade.
         </p>
         <div className="form-actions">
-          <a className="button" href="/">
-            Salvar configurações
-          </a>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                setSaved(true);
+                window.setTimeout(() => router.push("/"), 900);
+              }}
+            >
+              Salvar configurações
+            </button>
+          </div>
+          <div className={`toast ${saved ? "show" : ""}`} role="status" aria-live="polite">
+            Configurações salvas.
+          </div>
         </div>
       </section>
     </section>
