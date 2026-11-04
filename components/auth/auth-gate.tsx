@@ -9,7 +9,7 @@ export function AuthGate() {
     <div className="auth-gate">
       <section className="auth-card" aria-labelledby="auth-title">
         <div className="brand-mark" aria-hidden="true">
-          w
+          <img src="/icons/icon.svg" alt="" />
         </div>
         <span className="eyebrow">SEU DIÁRIO DE LEITURA</span>
         <h1 id="auth-title">Seu progresso, em qualquer lugar</h1>

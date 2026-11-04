@@ -1,0 +1,13 @@
+{
+  "name": "Wordtrail — Aprenda lendo",
+  "short_name": "Wordtrail",
+  "description": "Um companheiro de leitura para aprender vocabulário.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f4ee",
+  "theme_color": "#f7f4ee",
+  "lang": "pt-BR",
+  "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

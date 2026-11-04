@@ -55,7 +55,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-label="Wordtrail início"
             onClick={navigate}
           >
-            <span className="brand-mark">w</span>
+            <span className="brand-mark">
+              <img src="/icons/icon.svg" alt="" />
+            </span>
             <span>
               wordtrail<small>read a little. grow a lot.</small>
             </span>
@@ -132,7 +134,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="main-area">
         <header className="mobile-header">
           <Link className="brand" href="/" onClick={navigate}>
-            <span className="brand-mark">w</span>
+            <span className="brand-mark">
+              <img src="/icons/icon.svg" alt="" />
+            </span>
           </Link>
           <button
             className="icon-button mobile-menu"
