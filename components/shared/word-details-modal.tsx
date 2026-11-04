@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { Word } from "@/types/domain";
+import { motion } from "motion/react";
 
 export function WordDetailsModal({
   word,
@@ -19,12 +20,15 @@ export function WordDetailsModal({
       : [];
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
-      <section
+      <motion.section
         className="modal word-details-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="word-details-title"
         onClick={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
       >
         <div className="modal-header">
           <div>
@@ -83,7 +87,7 @@ export function WordDetailsModal({
             {word.definition || "Definição indisponível"}
           </div>
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 }

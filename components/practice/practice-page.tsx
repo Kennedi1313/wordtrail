@@ -10,9 +10,12 @@ import {
 import { StatCards } from "@/components/shared/stat-cards";
 import { Clock3 } from "lucide-react";
 import { PracticeTip } from "@/components/practice/practice-tip";
+import { motion } from "motion/react";
+import { useSoundEffects } from "@/hooks/use-sound-effects";
 export function PracticePage() {
   const MINIMUM_WORDS = 10;
   const { state, setState } = useWordtrail();
+  const { playCorrect, playIncorrect, playComplete } = useSoundEffects();
   const [source, setSource] = useState<"vocabulary" | "dictionary">(
     "vocabulary",
   );
@@ -112,6 +115,8 @@ export function PracticePage() {
   function answerWord(correct: boolean) {
     if (!word || feedback !== null) return;
     setFeedback(correct);
+    if (correct) playCorrect();
+    else playIncorrect();
     setAnswered((value) => value + 1);
     if (correct) setCorrectAnswers((value) => value + 1);
     setState((current) => ({
@@ -146,6 +151,7 @@ export function PracticePage() {
       answered,
       duration: Math.floor((300 - secondsLeft) / 60),
     });
+    playComplete();
     setIndex(null);
     setFeedback(null);
   }
@@ -158,7 +164,12 @@ export function PracticePage() {
             <h1>Hora do jogo!</h1>
             <p>Uma pausa curtinha também é progresso.</p>
           </section>
-          <section className="session-card practice-complete">
+          <motion.section
+            className="session-card practice-complete"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+          >
             <span className="eyebrow">RODADA CONCLUÍDA</span>
             <h2>Mandou bem nessa pausa!</h2>
             <p>
@@ -186,7 +197,7 @@ export function PracticePage() {
             >
               Voltar aos jogos →
             </button>
-          </section>
+          </motion.section>
         </>
       ) : null}
       {practiceSummary ? null : (
@@ -412,15 +423,18 @@ export function PracticePage() {
                   </>
                 )}
                 {feedback !== null && (
-                  <div
+                  <motion.div
                     className={`answer-box ${feedback ? "answer-correct" : "answer-wrong"}`}
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.18 }}
                   >
                     <p>
                       {feedback
                         ? "Isso! Palavra correta."
                         : `Quase! A palavra era: ${word?.term}`}
                     </p>
-                  </div>
+                  </motion.div>
                 )}
                 {mode === "flashcard" && feedback === null && (
                   <div className="flashcard-answer-form">
