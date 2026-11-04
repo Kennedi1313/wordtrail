@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useWordtrail } from "@/hooks/use-wordtrail";
 import { WordCountBadge } from "@/components/shared/stat-cards";
-import { Clock3 } from "lucide-react";
+import { GoalCard } from "@/components/shared/goal-card";
+import { StartCard } from "@/components/shared/start-card";
 
 export function HomePage() {
   const { state, settings, ready } = useWordtrail();
@@ -28,55 +29,28 @@ export function HomePage() {
         </p>
       </section>
       <section className="home-grid">
-        <div className="hero-card">
-          <div className="hero-copy">
-            <span className="eyebrow">UM PASSINHO DE CADA VEZ</span>
-            <h2>Pronta pra começar a leitura?</h2>
-            <p>
-              Inicie uma sessão, leia no seu ritmo e pesquise palavras sem
-              perder o fio.
-            </p>
-          </div>
-        </div>
-        <div className="goal-card">
-          <div className="goal-head">
-            <div>
-              <h3>Sua meta de leitura</h3>
-            </div>
-            <span className="goal-icon" aria-hidden="true">
-              <Clock3 />
-            </span>
-          </div>
-          <div className="goal-meter">
-            <div
-              className="ring"
-              style={
-                {
-                  "--progress": `${Math.min(100, (todayMinutes / settings.dailyGoal) * 100)}%`,
-                } as React.CSSProperties
-              }
-            >
-              <span>
-                {Math.round(
-                  Math.min(100, (todayMinutes / settings.dailyGoal) * 100),
-                )}
-                %
-              </span>
-            </div>
-            <div className="goal-copy">
-              <strong>
-                {todayMinutes} <small>min</small>
-              </strong>
-              <small>de {settings.dailyGoal} min hoje</small>
-            </div>
-          </div>
-          <div className="goal-bottom">
-            <span />
+        <StartCard
+          eyebrow="UM PASSINHO DE CADA VEZ"
+          title="Pronta pra começar a leitura?"
+          description="Inicie uma sessão, leia no seu ritmo e pesquise palavras sem perder o fio."
+          action={
+            <Link className="button" href="/reading">
+              Começar uma leitura →
+            </Link>
+          }
+        />
+        <GoalCard
+          title="Sua meta de leitura"
+          value={todayMinutes}
+          total={settings.dailyGoal}
+          unit="minutos lidos"
+          caption={`de ${settings.dailyGoal} minutos hoje`}
+          action={
             <Link className="text-button" href="/reading">
               Registrar +
             </Link>
-          </div>
-        </div>
+          }
+        />
       </section>
       <section className="stats-row">
         <div className="stat-card stat-card-home">

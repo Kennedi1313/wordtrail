@@ -1386,6 +1386,261 @@ h3 {
 .practice-start-card {
   width: 100%;
   max-width: none;
+  margin-top: var(--space-6);
+  padding: var(--space-8);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    110deg,
+    var(--color-primary-soft),
+    var(--color-surface)
+  );
+  border-color: var(--color-primary-border);
+  box-shadow: var(--shadow-card);
+}
+.practice-start-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.6fr);
+  align-items: stretch;
+  gap: var(--space-10);
+  margin-top: var(--space-6);
+}
+.practice-game-start-card {
+  max-width: none;
+  min-height: 270px;
+  padding: var(--space-8) var(--space-10);
+  color: var(--color-white);
+  background: var(--color-primary);
+}
+.practice-game-start-card .practice-hero-content {
+  position: relative;
+  z-index: 1;
+}
+.practice-game-start-card .practice-hero-content h2 {
+  color: var(--color-white);
+}
+.practice-game-start-card .practice-hero-content .eyebrow {
+  color: var(--color-primary-soft);
+}
+.practice-game-start-card .practice-hero-meta span {
+  background: var(--color-white-overlay);
+  color: var(--color-white);
+}
+.practice-game-start-card .practice-hero-meta svg {
+  color: var(--color-highlight);
+}
+.practice-game-start-card .practice-hero-cta {
+  background: var(--color-highlight);
+  color: var(--color-body);
+}
+.practice-game-start-card .practice-unlock-note {
+  color: var(--color-primary-soft);
+}
+.practice-game-start-card .practice-hero-art .goal-card .goal-head h3,
+.practice-game-start-card .practice-hero-art .goal-card .goal-copy strong {
+  color: var(--color-white);
+}
+.practice-game-start-card .practice-hero-art .goal-card .goal-copy small {
+  color: var(--color-primary-soft);
+}
+.practice-game-start-card .practice-hero-art .goal-card .ring {
+  background: conic-gradient(
+    var(--color-highlight) var(--progress),
+    var(--color-white-overlay) 0
+  );
+}
+.practice-game-start-card .practice-hero-art .goal-card .ring:before {
+  background: var(--color-primary);
+}
+.practice-game-start-card .practice-hero-art .goal-card .ring span {
+  color: var(--color-white);
+}
+.practice-hero-art {
+  position: relative;
+  min-height: 220px;
+}
+.practice-hero-art .goal-card {
+  width: 100%;
+  margin: 0;
+}
+.practice-readiness-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--goal-ring-size);
+  height: var(--goal-ring-size);
+  background: conic-gradient(
+    var(--color-accent) var(--progress),
+    var(--color-surface-soft) 0
+  );
+  transform: translate(-50%, -50%);
+}
+.practice-readiness-ring > span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+}
+.practice-readiness-ring strong {
+  color: var(--color-ink);
+  font:
+    var(--weight-heavy) var(--text-xl) Manrope,
+    sans-serif;
+  line-height: 1;
+}
+.practice-readiness-ring small {
+  margin-top: var(--space-1);
+  color: var(--color-subtle);
+  font-size: var(--text-xs);
+}
+.practice-readiness-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.practice-hero-content h2 {
+  margin: var(--space-2) 0 var(--space-4);
+  font-size: clamp(var(--text-2xl), 4vw, var(--text-display));
+}
+.practice-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.practice-hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.practice-hero-meta svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-primary);
+}
+.practice-unlock-note {
+  margin: var(--space-4) 0 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+.practice-hero-cta {
+  width: 100%;
+  min-height: 54px;
+  margin-top: var(--space-5);
+  font-size: var(--text-base);
+}
+.practice-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+.practice-mode-card {
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 120px;
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-body);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--motion-fast) ease;
+}
+.practice-mode-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary-border);
+  box-shadow: var(--shadow-card);
+}
+.practice-mode-card.selected {
+  border: var(--border-width-strong) solid var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.practice-mode-card > svg {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  color: var(--color-primary);
+}
+.practice-mode-card span {
+  display: grid;
+  gap: var(--space-1);
+}
+.practice-mode-card strong {
+  font-size: var(--text-base);
+}
+.practice-mode-card small {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.practice-mode-check {
+  position: absolute;
+  right: var(--space-4);
+  top: var(--space-4);
+  width: 22px !important;
+  height: 22px !important;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-white) !important;
+}
+.practice-progress-heading {
+  margin-top: var(--space-10);
+}
+@media (max-width: 520px) {
+  .practice-game-start-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: var(--space-5);
+    padding: var(--space-6) var(--space-5);
+  }
+  .practice-game-start-card .practice-hero-art {
+    min-height: 170px;
+  }
+  .practice-game-start-card .practice-hero-art .goal-card {
+    flex-direction: column;
+    align-items: center;
+  }
+  .practice-game-start-card .practice-hero-content h2 {
+    font-size: var(--text-2xl);
+  }
+  .practice-mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.practice-start-card .side-panel-title {
+  align-items: center;
+}
+.practice-start-card .side-panel-title h2 {
+  font-size: clamp(var(--text-xl), 3vw, var(--text-2xl));
+}
+.practice-start-card .practice-config {
+  background: rgba(255, 255, 255, 0.62);
+  border: var(--border-width) solid rgba(255, 255, 255, 0.9);
+}
+.practice-start-card .practice-tip {
+  background: rgba(255, 255, 255, 0.58);
+  border: var(--border-width) solid rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.practice-start-card > .button {
+  width: min(100%, 520px);
+  min-height: 54px;
+  margin: var(--space-5) auto 0;
+  font-size: var(--text-base);
 }
 .practice-description {
   margin: var(--space-1) 0 0;
@@ -2313,6 +2568,11 @@ h3 {
   z-index: 1;
   width: 100%;
 }
+.reading-start-copy > .eyebrow {
+  display: block;
+  margin-bottom: var(--space-3);
+  color: var(--color-primary-soft);
+}
 .reading-start-copy .goal-icon {
   margin-bottom: var(--space-3);
   background: var(--color-white-overlay);
@@ -2331,6 +2591,19 @@ h3 {
   background: var(--color-highlight);
   color: var(--color-body);
   width: 100%;
+}
+
+/* All entry cards use one button rhythm and typography. */
+.reading-start-card .button,
+.practice-game-start-card .button {
+  min-height: 48px;
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-family: "DM Sans", sans-serif;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--line-tight);
 }
 .reading-start-time {
   position: relative;
@@ -2907,5 +3180,57 @@ h3 {
 @keyframes wordtrail-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+.practice-game-start-card {
+  width: 100%;
+  max-width: none;
+}
+@media (max-width: 520px) {
+  .practice-game-start-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-6) var(--space-5);
+  }
+  .practice-game-start-card .practice-hero-content h2 {
+    font-size: var(--text-2xl);
+  }
+}
+
+/* The setup uses two sibling cards: the round CTA and the review progress. */
+.practice-start-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: var(--space-5);
+  align-items: stretch;
+}
+
+.practice-game-start-card {
+  width: 100%;
+  max-width: none;
+  min-height: 270px;
+  display: flex;
+  align-items: center;
+}
+
+.practice-start-grid > .goal-card {
+  width: 100%;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .practice-start-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .practice-game-start-card {
+    min-height: 0;
+  }
+
+  .practice-start-grid > .goal-card {
+    width: 100%;
   }
 }

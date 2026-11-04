@@ -11,7 +11,10 @@ import {
 import { Word } from "@/types/domain";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { WordCountBadge } from "@/components/shared/stat-cards";
-import { Clock3, Pause, Play, Search, Square, Trash2 } from "lucide-react";
+import { GoalCard } from "@/components/shared/goal-card";
+import { StartCard } from "@/components/shared/start-card";
+import { Pause, Play, Search, Square, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 function formatElapsed(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -513,54 +516,28 @@ export function ReadingPage() {
         </p>
       </section>
       <section className="home-grid">
-        <div className="reading-start-card">
-          <div className="reading-start-copy">
-            <h2>Pronta pra abrir o livro?</h2>
-            <p>
-              O cronômetro começa junto com a sessão. Suas pesquisas ficam
-              ligadas a ela.
-            </p>
+        <StartCard
+          eyebrow="HORA DE LEITURA"
+          title="Pronta pra abrir o livro?"
+          description="O cronômetro começa junto com a sessão. Leia no seu ritmo e pesquise palavras sem perder o fio."
+          action={
             <button className="button" onClick={start}>
               <Play aria-hidden="true" /> Iniciar leitura
             </button>
-          </div>
-        </div>
-        <div className="goal-card">
-          <div className="goal-head">
-            <div>
-              <h3>Sua meta de leitura</h3>
-            </div>
-            <span className="goal-icon" aria-hidden="true">
-              <Clock3 />
-            </span>
-          </div>
-          <div className="goal-meter">
-            <div
-              className="ring"
-              style={
-                {
-                  "--progress": `${Math.min(100, (todayMinutes / settings.dailyGoal) * 100)}%`,
-                } as React.CSSProperties
-              }
-            >
-              <span>
-                {Math.round(
-                  Math.min(100, (todayMinutes / settings.dailyGoal) * 100),
-                )}
-                %
-              </span>
-            </div>
-            <div className="goal-copy">
-              <strong>
-                {todayMinutes} <small>min</small>
-              </strong>
-              <small>de {settings.dailyGoal} min hoje</small>
-            </div>
-          </div>
-          <div className="goal-bottom">
-            <span />
-          </div>
-        </div>
+          }
+        />
+        <GoalCard
+          title="Sua meta de leitura"
+          value={todayMinutes}
+          total={settings.dailyGoal}
+          unit="min"
+          caption={`de ${settings.dailyGoal} min hoje`}
+          action={
+            <Link className="text-button" href="/reading">
+              Registrar +
+            </Link>
+          }
+        />
       </section>
       <div className="section-heading">
         <div>

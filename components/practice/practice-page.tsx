@@ -10,10 +10,12 @@ import {
 import { StatCards } from "@/components/shared/stat-cards";
 import { Clock3 } from "lucide-react";
 import { PracticeTip } from "@/components/practice/practice-tip";
+import { PracticeSetup } from "@/components/practice/practice-setup";
 import { motion } from "motion/react";
 import { useSoundEffects } from "@/hooks/use-sound-effects";
 export function PracticePage() {
   const MINIMUM_WORDS = 10;
+  const MAXIMUM_ROUND_WORDS = 10;
   const { state, setState } = useWordtrail();
   const { playCorrect, playIncorrect, playComplete } = useSoundEffects();
   const [source, setSource] = useState<"vocabulary" | "dictionary">(
@@ -31,6 +33,7 @@ export function PracticePage() {
   const [index, setIndex] = useState<number | null>(null);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<boolean | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(300);
   const [practiceSummary, setPracticeSummary] = useState<{
     correct: number;
@@ -68,6 +71,9 @@ export function PracticePage() {
     );
     return () => window.clearInterval(timer);
   }, [index]);
+  useEffect(() => {
+    if (index !== null && secondsLeft === 0) finishPractice();
+  }, [index, secondsLeft]);
   async function startPractice() {
     if (!canStartPractice) {
       setLoadError(
@@ -86,13 +92,16 @@ export function PracticePage() {
         if (!response.ok)
           throw new Error("Não foi possível carregar palavras online agora.");
         const data = await response.json();
-        const fetchedWords = Array.isArray(data.words) ? data.words : [];
+        const fetchedWords = (
+          Array.isArray(data.words) ? data.words : []
+        ) as typeof state.words;
         if (!fetchedWords.length)
           throw new Error("A API não retornou palavras para praticar.");
         setOnlineWords(fetchedWords);
-        setSessionWords(shuffle(fetchedWords));
+        setSessionWords(shuffle(fetchedWords).slice(0, MAXIMUM_ROUND_WORDS));
         setIndex(0);
         setFeedback(null);
+        setSelectedOption(null);
         setAnswer("");
         setSecondsLeft(300);
       } catch (error) {
@@ -106,14 +115,16 @@ export function PracticePage() {
       }
       return;
     }
-    setSessionWords(shuffle(words));
+    setSessionWords(shuffle(words).slice(0, MAXIMUM_ROUND_WORDS));
     setIndex(0);
     setFeedback(null);
+    setSelectedOption(null);
     setAnswer("");
     setSecondsLeft(300);
   }
-  function answerWord(correct: boolean) {
+  function answerWord(correct: boolean, selectedValue?: string) {
     if (!word || feedback !== null) return;
+    setSelectedOption(selectedValue ?? null);
     setFeedback(correct);
     if (correct) playCorrect();
     else playIncorrect();
@@ -138,10 +149,15 @@ export function PracticePage() {
     }));
   }
   function next() {
+    if (answered >= MAXIMUM_ROUND_WORDS) {
+      finishPractice();
+      return;
+    }
     setIndex((current) =>
       current === null ? 0 : (current + 1) % Math.max(sessionWords.length, 1),
     );
     setFeedback(null);
+    setSelectedOption(null);
     setAnswer("");
     setSecondsLeft(300);
   }
@@ -151,9 +167,10 @@ export function PracticePage() {
       answered,
       duration: Math.floor((300 - secondsLeft) / 60),
     });
-    playComplete();
     setIndex(null);
     setFeedback(null);
+    if (answered >= MAXIMUM_ROUND_WORDS) playComplete();
+    else playIncorrect();
   }
   return (
     <section className={practiceSummary ? "practice-summary-page" : undefined}>
@@ -205,19 +222,39 @@ export function PracticePage() {
           {index === null && (
             <section className="page-intro">
               <span className="eyebrow">PAUSA PRA FIXAR</span>
-              <h1>Hora do jogo!</h1>
-              <p>
-                Cinco minutinhos pra trazer de volta as palavras que você
-                encontrou lendo.
-              </p>
+              <h1>Bora brincar com as palavras?</h1>
+              <p>Cinco minutinhos para deixar seu vocabulário mais forte.</p>
             </section>
           )}
-          {!words.length ? (
+          {index === null && (
+            <PracticeSetup
+              words={words.length}
+              reviewedToday={
+                new Set(
+                  state.reviews
+                    .filter(
+                      (review) =>
+                        review.at.slice(0, 10) ===
+                        new Date().toISOString().slice(0, 10),
+                    )
+                    .map((review) => review.term),
+                ).size
+              }
+              dueTotal={words.length}
+              reviews={state.reviews}
+              vocabularySize={state.words.length}
+              mode={mode}
+              onModeChange={setMode}
+              onStart={startPractice}
+              disabled={loading || !canStartPractice}
+            />
+          )}
+          {false ? (
             <>
               <div className="form-card practice-start-card">
                 <div className="side-panel-title">
                   <div>
-                    <h2>Uma rodada rapidinha</h2>
+                    <h2>Sua próxima rodada</h2>
                     <p className="practice-description">
                       {words.length
                         ? `Você tem ${words.length} palavras. Faltam ${MINIMUM_WORDS - words.length} para liberar o jogo.`
@@ -294,12 +331,12 @@ export function PracticePage() {
                 ]}
               />
             </>
-          ) : index === null ? (
+          ) : false ? (
             <>
               <div className="form-card practice-start-card">
                 <div className="side-panel-title">
                   <div>
-                    <h2>Uma rodada rapidinha</h2>
+                    <h2>Sua próxima rodada</h2>
                     <p className="practice-description">
                       {words.length} palavras prontas pra revisar. Palavras
                       antigas também entram no jogo.
@@ -368,7 +405,7 @@ export function PracticePage() {
                 ]}
               />
             </>
-          ) : (
+          ) : index !== null ? (
             <div className="practice-screen">
               <section className="page-intro">
                 <span className="eyebrow">SUA PAUSA DE CINCO MINUTOS</span>
@@ -403,10 +440,12 @@ export function PracticePage() {
                     <div className="quiz-options">
                       {options.map((option) => (
                         <button
-                          className={`quiz-option ${feedback !== null && option.correct ? "correct" : ""}`}
+                          className={`quiz-option ${feedback !== null && option.correct ? "correct" : ""} ${feedback !== null && selectedOption === option.value && !option.correct ? "wrong" : ""}`}
                           key={option.value}
                           disabled={feedback !== null}
-                          onClick={() => answerWord(option.correct)}
+                          onClick={() =>
+                            answerWord(option.correct, option.value)
+                          }
                         >
                           {option.value}
                         </button>
@@ -429,11 +468,11 @@ export function PracticePage() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.18 }}
                   >
-                    <p>
+                    <span className="answer-label">
                       {feedback
                         ? "Isso! Palavra correta."
                         : `Quase! A palavra era: ${word?.term}`}
-                    </p>
+                    </span>
                   </motion.div>
                 )}
                 {mode === "flashcard" && feedback === null && (
@@ -512,14 +551,16 @@ export function PracticePage() {
                     )}
                     {feedback !== null && (
                       <button className="button" onClick={next}>
-                        Próxima palavra →
+                        {answered >= MAXIMUM_ROUND_WORDS
+                          ? "Concluir rodada"
+                          : "Próxima palavra →"}
                       </button>
                     )}
                   </div>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </>
       )}
     </section>
