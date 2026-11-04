@@ -15,6 +15,7 @@ import { Menu, Settings, X } from "lucide-react";
 export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [navigating, setNavigating] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const date = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
     day: "numeric",
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }).format(new Date());
   const pathname = usePathname();
   useEffect(() => setNavigating(false), [pathname]);
+  useEffect(() => setHydrated(true), []);
   const navigate = () => {
     setMenuOpen(false);
     setNavigating(true);
@@ -29,16 +31,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const { state, settings, ready } = useWordtrail();
   const today = new Date().toISOString().slice(0, 10);
-  const todayMinutes = ready
-    ? Math.floor(
-        state.readingSessions
-          .filter((session) => session.date === today)
-          .reduce((total, session) => total + (session.seconds || 0), 0) / 60,
-      )
+  const todayMinutes =
+    hydrated && ready
+      ? Math.floor(
+          state.readingSessions
+            .filter((session) => session.date === today)
+            .reduce((total, session) => total + (session.seconds || 0), 0) / 60,
+        )
+      : 0;
+  const readingDays = hydrated
+    ? new Set(
+        state.readingSessions.map((session) => session.date).filter(Boolean),
+      ).size
     : 0;
-  const readingDays = new Set(
-    state.readingSessions.map((session) => session.date).filter(Boolean),
-  ).size;
+  const dailyGoal = hydrated ? settings.dailyGoal : 30;
   return (
     <div className="app-shell">
       <aside className={`sidebar${menuOpen ? " open" : ""}`} id="app-sidebar">
@@ -110,12 +116,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="note-progress">
               <span
                 style={{
-                  width: `${Math.min(100, (todayMinutes / settings.dailyGoal) * 100)}%`,
+                  width: `${Math.min(100, (todayMinutes / dailyGoal) * 100)}%`,
                 }}
               />
             </div>
             <small>
-              {todayMinutes} de {settings.dailyGoal} min hoje
+              {todayMinutes} de {dailyGoal} min hoje
             </small>
           </div>
           <div className="sidebar-account">
@@ -139,7 +145,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="main-scroll">
           <header className="topbar">
             <div>
-              <span className="date-label">{date}</span>
+              <span className="date-label" suppressHydrationWarning>
+                {date}
+              </span>
             </div>
             <div className="topbar-actions">
               <Link className="topbar-streak" href="/reading">

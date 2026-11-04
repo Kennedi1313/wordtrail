@@ -3234,3 +3234,86 @@ h3 {
     width: 100%;
   }
 }
+
+/* Apple Design interaction baseline: immediate, tactile, accessible feedback. */
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+.button,
+.nav-link,
+.text-button,
+.quiz-option,
+.practice-mode-card {
+  touch-action: manipulation;
+}
+
+button:not(:disabled):active,
+.button:not(:disabled):active,
+.nav-link:active,
+.text-button:active,
+.quiz-option:not(:disabled):active,
+.practice-mode-card:active {
+  transform: scale(0.98);
+  transition-duration: 100ms;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--color-focus-strong);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
+  button:not(:disabled):active,
+  .button:not(:disabled):active,
+  .nav-link:active,
+  .text-button:active,
+  .quiz-option:not(:disabled):active,
+  .practice-mode-card:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .modal-backdrop,
+  .navigation-loading,
+  .route-loading {
+    backdrop-filter: none;
+  }
+
+  .navigation-loading {
+    background: var(--color-canvas);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .button,
+  .nav-link,
+  .goal-card,
+  .stat-card,
+  .panel,
+  .reading-start-card,
+  .hero-card,
+  .practice-mode-card,
+  .quiz-option {
+    border: var(--border-width) solid currentColor;
+  }
+}
