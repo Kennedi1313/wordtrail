@@ -70,7 +70,7 @@ function createWordtrailState() {
       if (!id) return;
       const cloud = await loadCloudData(id).catch(() => null);
       if (!cancelled && cloud) {
-        setState(cloud.state);
+        setState({ ...cloud.state, books: cloud.state.books || [] });
         setSettings(cloud.settings);
       }
     });

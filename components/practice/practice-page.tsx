@@ -222,8 +222,7 @@ export function PracticePage() {
           {index === null && (
             <section className="page-intro">
               <span className="eyebrow">PAUSA PRA FIXAR</span>
-              <h1>Bora brincar com as palavras?</h1>
-              <p>Cinco minutinhos para deixar seu vocabulário mais forte.</p>
+              <h1>Bora praticar?</h1>
             </section>
           )}
           {index === null && (

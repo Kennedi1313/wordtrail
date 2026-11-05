@@ -12,6 +12,22 @@ import { useEffect, useState } from "react";
 import { NavIcon } from "@/components/ui/nav-icon";
 import { Menu, Settings, X } from "lucide-react";
 
+const toLocalDateString = (dateInput: string | Date | number | null | undefined): string | null => {
+  if (!dateInput) return null;
+
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Fortaleza', 
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(d);
+};
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [navigating, setNavigating] = useState(false);
@@ -30,15 +46,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
   const searchParams = useSearchParams();
   const { state, settings, ready } = useWordtrail();
-  const today = new Date().toISOString().slice(0, 10);
-  const todayMinutes =
-    hydrated && ready
-      ? Math.floor(
-          state.readingSessions
-            .filter((session) => session.date === today)
-            .reduce((total, session) => total + (session.seconds || 0), 0) / 60,
-        )
-      : 0;
+  const today = toLocalDateString(new Date());
+  const todayMinutes = Math.floor(
+    state.readingSessions
+      .filter((session) => toLocalDateString(session.date) === today)
+      .reduce((total, session) => total + (session.seconds || 0), 0) / 60,
+  );
   const readingDays = hydrated
     ? new Set(
         state.readingSessions.map((session) => session.date).filter(Boolean),

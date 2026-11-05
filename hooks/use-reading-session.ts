@@ -24,11 +24,12 @@ export function useReadingSession() {
         : 0,
     [active, now],
   );
-  const start = useCallback(() => {
+  const start = useCallback((bookId?: string) => {
     if (state.activeReadingSession) return;
     const startedAt = new Date().toISOString();
     const session: ReadingSession = {
       id: crypto.randomUUID(),
+      bookId,
       startedAt,
       date: startedAt.slice(0, 10),
       seconds: 0,
@@ -94,6 +95,17 @@ export function useReadingSession() {
         ...current,
         activeReadingSession: null,
         readingSessions: [completed, ...current.readingSessions],
+        books: completed.bookId
+          ? current.books.map((book) =>
+              book.id === completed.bookId
+                ? {
+                    ...book,
+                    currentPage: Math.min(book.totalPages, book.currentPage + pages),
+                    updatedAt: new Date().toISOString(),
+                  }
+                : book,
+            )
+          : current.books,
         words: Object.values(active.pendingWords || {}).reduce(
           (words, word) => {
             const existing = words.find(

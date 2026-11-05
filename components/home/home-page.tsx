@@ -6,27 +6,44 @@ import { WordCountBadge } from "@/components/shared/stat-cards";
 import { GoalCard } from "@/components/shared/goal-card";
 import { StartCard } from "@/components/shared/start-card";
 
+const toLocalDateString = (dateInput: string | Date | number | null | undefined): string | null => {
+  if (!dateInput) return null;
+
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Fortaleza', 
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(d);
+};
+
 export function HomePage() {
   const { state, settings, ready } = useWordtrail();
   const words = ready ? state.words : [];
   const lookupCount = words.reduce((sum, word) => sum + word.lookups, 0);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const todayMinutes = Math.floor(
     state.readingSessions
-      .filter((session) => session.date === today)
+      .filter((session) => toLocalDateString(session.date) === today)
       .reduce((total, session) => total + (session.seconds || 0), 0) / 60,
   );
+
   const readingDays = new Set(
-    state.readingSessions.map((session) => session.date).filter(Boolean),
+    state.readingSessions
+      .map((session) => toLocalDateString(session.date))
+      .filter(Boolean),
   ).size;
+  
   return (
     <>
       <section className="page-intro">
         <span className="eyebrow">SEU DIÁRIO DE LEITURA</span>
         <h1>Oi, que bom te ver por aqui</h1>
-        <p>
-          Um cantinho pra acompanhar suas leituras e guardar cada palavra nova.
-        </p>
       </section>
       <section className="home-grid">
         <StartCard

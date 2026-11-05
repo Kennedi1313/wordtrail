@@ -606,6 +606,127 @@ h3 {
   grid-template-columns: minmax(0, 1.5fr) minmax(230px, 0.8fr);
   gap: var(--space-4);
 }
+.reading-library-card {
+  min-height: var(--hero-min-height);
+  padding: var(--space-6);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+.reading-library-card .reading-start-copy p {
+  color: var(--color-primary-soft);
+  font-size: var(--text-xs);
+  line-height: var(--line-relaxed);
+  margin-bottom: var(--space-4);
+}
+.reading-library-card > .button,
+.reading-library-card .new-book-form .button {
+  background: var(--color-highlight);
+  color: var(--color-on-highlight);
+}
+.reading-library-card > .button:hover,
+.reading-library-card .new-book-form .button:hover {
+  background: var(--color-highlight);
+  color: var(--color-on-highlight);
+}
+.book-picker-list {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.book-picker-item {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-white-overlay);
+  color: var(--color-white);
+  text-align: left;
+  transition: all 0.2s ease-in-out;
+}
+.book-picker-item.selected {
+  border-color: var(--color-highlight);
+  background: var(--color-white-overlay);
+  box-shadow: 0 0 0 3px var(--color-focus-soft);
+  transform: translateY(0);
+  transform: scale(1.01);
+}
+.book-picker-item:active {
+  transform: scale(0.98);
+}
+.book-picker-item .delete-session-button {
+  position: relative;
+  right: unset;
+  top: unset;
+  color: var(--color-danger-soft); 
+  transform: translateY(0);
+}
+.book-picker-item .delete-session-button:hover {
+  color: var(--color-danger);
+}
+.book-picker-item .delete-session-button:active {
+  transform: scale(0.98);
+  transform: translateY(0);
+}
+.reading-library-card .button {
+  width: 100%;
+}
+.book-picker-item > svg {
+  width: var(--icon-size-md);
+  margin-left: auto;
+  color: var(--color-highlight);
+}
+.book-picker-copy {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.book-picker-copy strong,
+.book-picker-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-picker-copy small {
+  color: var(--color-primary-soft);
+  font-size: var(--text-xs);
+}
+.book-progress-track {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-white-overlay);
+}
+.book-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-highlight);
+}
+.book-empty-state {
+  margin-bottom: var(--space-4);
+}
+.new-book-details {
+  margin-top: var(--space-4);
+  border-top: var(--border-width) solid var(--color-border);
+  padding-top: var(--space-3);
+  color: var(--color-primary-soft);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+.new-book-details summary { cursor: pointer; }
+.new-book-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
 .hero-card {
   min-height: var(--hero-min-height);
   padding: var(--space-8) var(--space-8);
@@ -701,6 +822,7 @@ h3 {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  max-height: 18rem;
 }
 .goal-head {
   display: flex;
@@ -2781,12 +2903,11 @@ h3 {
 .delete-session-button {
   position: absolute;
   right: 58px;
-  top: 50%;
   width: var(--icon-box-size);
   height: var(--icon-box-size);
   display: grid;
   place-items: center;
-  transform: translateY(-50%);
+  transform: translateY(0);
   padding: 0;
   border: var(--border-width) solid transparent;
   border-radius: var(--radius-sm);

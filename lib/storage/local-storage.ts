@@ -26,7 +26,11 @@ export function loadState(key = STORAGE_KEY): AppState {
     !Array.isArray(value.reviews)
   )
     return structuredClone(DEFAULT_STATE);
-  return { ...structuredClone(DEFAULT_STATE), ...value };
+  return {
+    ...structuredClone(DEFAULT_STATE),
+    ...value,
+    books: Array.isArray(value.books) ? value.books : [],
+  };
 }
 
 export function loadSettings(key = SETTINGS_KEY): UserSettings {

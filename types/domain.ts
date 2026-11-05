@@ -20,6 +20,7 @@ export type Word = {
 
 export type ReadingSession = {
   id: string;
+  bookId?: string;
   title?: string;
   pages: number;
   note?: string;
@@ -35,6 +36,16 @@ export type ReadingSession = {
   createdAt?: string;
   wordSnapshots?: Record<string, Word | null>;
   pendingWords?: Record<string, Word>;
+};
+
+export type Book = {
+  id: string;
+  title: string;
+  author?: string;
+  totalPages: number;
+  currentPage: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ReadingLookup = {
@@ -55,6 +66,7 @@ export type ThemeMode = "system" | "light" | "dark";
 export type UserSettings = { dailyGoal: number; theme: ThemeMode };
 export type AppState = {
   words: Word[];
+  books: Book[];
   readingSessions: ReadingSession[];
   reviews: Review[];
   activeReadingSession: ReadingSession | null;
@@ -62,6 +74,7 @@ export type AppState = {
 
 export const DEFAULT_STATE: AppState = {
   words: [],
+  books: [],
   readingSessions: [],
   reviews: [],
   activeReadingSession: null,
