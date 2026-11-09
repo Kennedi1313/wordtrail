@@ -4,6 +4,11 @@ export type Word = {
   normalized: string;
   definition?: string;
   definitionSource?: string;
+  examples?: string[];
+  usageLabels?: string[];
+  etymology?: string;
+  inflections?: string[];
+  relatedWords?: string[];
   partOfSpeech?: string;
   translation?: string;
   translationOptions?: string[];
@@ -46,6 +51,7 @@ export type Book = {
   currentPage: number;
   createdAt: string;
   updatedAt: string;
+  language?: "en" | "pt";
 };
 
 export type ReadingLookup = {
@@ -79,4 +85,7 @@ export const DEFAULT_STATE: AppState = {
   reviews: [],
   activeReadingSession: null,
 };
-export const DEFAULT_SETTINGS: UserSettings = { dailyGoal: 30, theme: "system" };
+export const DEFAULT_SETTINGS: UserSettings = {
+  dailyGoal: 30,
+  theme: "system",
+};

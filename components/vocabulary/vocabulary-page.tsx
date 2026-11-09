@@ -1,14 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useWordtrail } from "@/hooks/use-wordtrail";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { WordCountBadge } from "../shared/stat-cards";
 import { WordDetailsModal } from "../shared/word-details-modal";
 import { VocabularySearch } from "../shared/vocabulary-search";
-import {
-  lookupWord,
-  translateWordOptions,
-} from "@/services/dictionary-service";
+import { lookupWord } from "@/services/dictionary-service";
 import { Word } from "@/types/domain";
 import { X } from "lucide-react";
 
@@ -21,32 +18,31 @@ export function VocabularyPage() {
     (typeof visibleWords)[number] | null
   >(null);
   const [refreshingWord, setRefreshingWord] = useState(false);
+  const filteredWords = useMemo(() => {
+    const query = filter.toLowerCase();
+    const seen = new Set<string>();
+    return visibleWords.filter((word) => {
+      const normalized = word.normalized.trim().toLowerCase();
+      const matches =
+        `${word.term} ${word.translation || ""} ${word.definition || ""}`
+          .toLowerCase()
+          .includes(query);
+      if (!matches || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+  }, [filter, visibleWords]);
   async function openWord(word: Word) {
     setSelectedWord(word);
     setRefreshingWord(true);
-    const [dictionaryResult, translationResult] = await Promise.allSettled([
-      lookupWord(word.term),
-      translateWordOptions(word.term),
-    ]);
-    const dictionary =
-      dictionaryResult.status === "fulfilled" ? dictionaryResult.value : {};
-    const translation =
-      translationResult.status === "fulfilled"
-        ? translationResult.value.translation
-        : "";
-    const translationOptions =
-      translationResult.status === "fulfilled"
-        ? translationResult.value.options
-        : [];
+    const dictionary = await lookupWord(word.term).catch(() => ({}));
     const refreshed = {
       ...word,
       ...dictionary,
       term: word.term,
       normalized: word.normalized,
-      translation: word.translation || translation,
-      translationOptions: word.translationOptions?.length
-        ? word.translationOptions
-        : translationOptions,
+      translation: undefined,
+      translationOptions: undefined,
       lookups: word.lookups,
     };
     setSelectedWord(refreshed);
@@ -95,51 +91,38 @@ export function VocabularyPage() {
       <VocabularySearch words={visibleWords} onSearch={setFilter} />
       <div className="word-table">
         {ready &&
-          (state.words.filter((word) =>
-            `${word.term} ${word.translation || ""} ${word.definition || ""}`
-              .toLowerCase()
-              .includes(filter.toLowerCase()),
-          ).length ? (
-            state.words
-              .filter((word) =>
-                `${word.term} ${word.translation || ""} ${word.definition || ""}`
-                  .toLowerCase()
-                  .includes(filter.toLowerCase()),
-              )
-              .map((word) => (
-                <article
-                  className="word-row vocabulary-word-row"
-                  key={word.normalized}
-                  onClick={() => void openWord(word)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      void openWord(word);
-                    }
+          (filteredWords.length ? (
+            filteredWords.map((word) => (
+              <article
+                className="word-row vocabulary-word-row"
+                key={word.normalized}
+                onClick={() => void openWord(word)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    void openWord(word);
+                  }
+                }}
+              >
+                <div className="table-detail">
+                  <strong>{word.term}</strong>
+                  <small>{word.definition || "Definição indisponível"}</small>
+                </div>
+                <WordCountBadge count={word.lookups} />
+                <button
+                  className="delete-word"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setPendingDelete(word.normalized);
                   }}
+                  aria-label={`Remover ${word.term}`}
                 >
-                  <div className="table-detail">
-                    <strong>{word.term}</strong>
-                    <small>
-                      {word.translation || "Tradução indisponível"} ·{" "}
-                      {word.definition || "Definição indisponível"}
-                    </small>
-                  </div>
-                  <WordCountBadge count={word.lookups} />
-                  <button
-                    className="delete-word"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setPendingDelete(word.normalized);
-                    }}
-                    aria-label={`Remover ${word.term}`}
-                  >
-                    <X aria-hidden="true" />
-                  </button>
-                </article>
-              ))
+                  <X aria-hidden="true" />
+                </button>
+              </article>
+            ))
           ) : (
             <div className="empty-state">
               <strong>Seu vocabulário começa com uma curiosidade</strong>
@@ -152,12 +135,6 @@ export function VocabularyPage() {
           word={selectedWord}
           onClose={() => setSelectedWord(null)}
           refreshing={refreshingWord}
-          onTranslationChange={(translation) => {
-            if (!selectedWord) return;
-            const updated = { ...selectedWord, translation };
-            setSelectedWord(updated);
-            addWord(updated);
-          }}
         />
       )}
       {pendingDelete && (

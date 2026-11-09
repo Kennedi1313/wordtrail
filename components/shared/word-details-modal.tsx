@@ -6,18 +6,11 @@ export function WordDetailsModal({
   word,
   onClose,
   refreshing = false,
-  onTranslationChange,
 }: {
   word: Word;
   onClose: () => void;
   refreshing?: boolean;
-  onTranslationChange?: (translation: string) => void;
 }) {
-  const translationOptions = word.translationOptions?.length
-    ? word.translationOptions
-    : word.translation
-      ? [word.translation]
-      : [];
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <motion.section
@@ -55,37 +48,38 @@ export function WordDetailsModal({
             )}
           </div>
           <div className="result-divider" />
-          <div className="result-label">Traduções em português</div>
-          {translationOptions.length > 0 && (
-            <div
-              className="translation-options"
-              aria-label="Escolha a tradução"
-            >
-              {translationOptions.map((option) => (
-                <button
-                  className={`translation-option${option === word.translation ? " selected" : ""}`}
-                  key={option}
-                  type="button"
-                  onClick={() => onTranslationChange?.(option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
-          {translationOptions.length === 0 && (
-            <div className="translation-text">
-              {word.translation || "Tradução indisponível"}
-            </div>
-          )}
-          <div className="result-divider" />
-          <div className="result-label">
-            Definition in English
-            {word.definitionSource ? " · online" : ""}
-          </div>
+          <div className="result-label">Definição</div>
           <div className="definition-text">
             {word.definition || "Definição indisponível"}
           </div>
+          {word.usageLabels?.length ? (
+            <div className="dictionary-detail-row">
+              <span className="result-label">USO</span>
+              <div className="dictionary-tags">
+                {word.usageLabels.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {word.relatedWords?.length ? (
+            <div className="dictionary-detail-row">
+              <span className="result-label">PALAVRAS RELACIONADAS</span>
+              <p className="dictionary-detail-copy">
+                {word.relatedWords.join(", ")}
+              </p>
+            </div>
+          ) : null}
+          {word.examples?.length ? (
+            <div className="dictionary-detail-row">
+              <span className="result-label">EXEMPLOS</span>
+              <div className="dictionary-examples">
+                {word.examples.map((example) => (
+                  <p key={example}>{example}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </motion.section>
     </div>

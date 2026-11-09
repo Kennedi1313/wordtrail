@@ -436,6 +436,11 @@ export function PracticePage() {
                   <>
                     <div className="prompt-label">Qual é a palavra?</div>
                     <p className="prompt-definition">{word?.definition}</p>
+                    {word?.examples?.[0] && (
+                      <p className="practice-example">
+                        Exemplo: “{word.examples[0]}”
+                      </p>
+                    )}
                     <div className="quiz-options">
                       {options.map((option) => (
                         <button
@@ -458,6 +463,11 @@ export function PracticePage() {
                       Leia a definição e digite a palavra
                     </div>
                     <p className="prompt-definition">{word?.definition}</p>
+                    {word?.examples?.[0] && (
+                      <p className="practice-example">
+                        Exemplo: “{word.examples[0]}”
+                      </p>
+                    )}
                   </>
                 )}
                 {feedback !== null && (

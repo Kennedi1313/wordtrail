@@ -3,17 +3,14 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useReadingSession } from "@/hooks/use-reading-session";
 import { useWordtrail } from "@/hooks/use-wordtrail";
-import {
-  lookupWord,
-  suggestWords,
-  translateWordOptions,
-} from "@/services/dictionary-service";
+import { lookupWord, suggestWords } from "@/services/dictionary-service";
 import { Word } from "@/types/domain";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { WordCountBadge } from "@/components/shared/stat-cards";
 import { GoalCard } from "@/components/shared/goal-card";
 import { Pause, Play, Search, Square, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 function formatElapsed(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -25,17 +22,19 @@ function formatDuration(seconds: number) {
   return remainder < 10 ? `${minutes} min` : `${minutes} min ${remainder} seg`;
 }
 
-const toLocalDateString = (dateInput: string | Date | number | null | undefined): string | null => {
+const toLocalDateString = (
+  dateInput: string | Date | number | null | undefined,
+): string | null => {
   if (!dateInput) return null;
 
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return null;
 
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Fortaleza', 
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Fortaleza",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   });
 
   return formatter.format(d);
@@ -43,6 +42,7 @@ const toLocalDateString = (dateInput: string | Date | number | null | undefined)
 
 export function ReadingPage() {
   const { state, settings, ready, setState } = useWordtrail();
+  const searchParams = useSearchParams();
   const today = toLocalDateString(new Date());
   const todayMinutes = Math.floor(
     state.readingSessions
@@ -62,7 +62,6 @@ export function ReadingPage() {
     remove,
     history,
     trackLookup,
-    updateLookupTranslation,
   } = useReadingSession();
   const [term, setTerm] = useState("");
   const [pages, setPages] = useState("");
@@ -72,13 +71,13 @@ export function ReadingPage() {
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
-  const [selectedBookId, setSelectedBookId] = useState("");
-  const [newBookTitle, setNewBookTitle] = useState("");
-  const [newBookAuthor, setNewBookAuthor] = useState("");
-  const [newBookPages, setNewBookPages] = useState("");
+  const [selectedBookId, setSelectedBookId] = useState(
+    () => searchParams.get("book") || "",
+  );
   const [confirmAction, setConfirmAction] = useState<"discard" | string | null>(
     null,
   );
+  const [bookToDelete, setBookToDelete] = useState<string | null>(null);
   const visibleHistory = ready ? history : [];
   const bookById = useMemo(
     () => new Map(state.books.map((book) => [book.id, book])),
@@ -88,39 +87,18 @@ export function ReadingPage() {
     () => state.books.find((book) => book.id === selectedBookId),
     [selectedBookId, state.books],
   );
+  const availableBooks = useMemo(
+    () => state.books.filter((book) => book.currentPage < book.totalPages),
+    [state.books],
+  );
   useEffect(() => {
-    if (!selectedBookId && state.books.length) {
-      setSelectedBookId(state.books[0].id);
+    if (!availableBooks.some((book) => book.id === selectedBookId)) {
+      setSelectedBookId(availableBooks[0]?.id || "");
     }
-  }, [selectedBookId, state.books]);
+  }, [availableBooks, selectedBookId]);
 
   function startBook(bookId: string) {
     if (bookId) start(bookId);
-  }
-
-  function createBook(event: FormEvent) {
-    event.preventDefault();
-    const title = newBookTitle.trim();
-    const totalPages = Number(newBookPages);
-    if (!title || !Number.isInteger(totalPages) || totalPages < 1) return;
-    const now = new Date().toISOString();
-    const book = {
-      id: crypto.randomUUID(),
-      title,
-      author: newBookAuthor.trim() || undefined,
-      totalPages,
-      currentPage: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setState((current) => ({
-      ...current,
-      books: [book, ...current.books],
-    }));
-    setNewBookTitle("");
-    setNewBookAuthor("");
-    setNewBookPages("");
-    start(book.id);
   }
 
   function deleteBook(bookId: string) {
@@ -129,7 +107,8 @@ export function ReadingPage() {
       return {
         ...current,
         books: updatedBooks,
-        selectedBookId: selectedBookId === bookId ? null : updatedBooks[0]?.id || null,
+        selectedBookId:
+          selectedBookId === bookId ? null : updatedBooks[0]?.id || null,
       };
     });
   }
@@ -145,22 +124,12 @@ export function ReadingPage() {
     setActiveSuggestionIndex(-1);
     setSearching(true);
     try {
-      const [dictionaryResult, translationResult] = await Promise.allSettled([
-        lookupWord(inputTerm),
-        translateWordOptions(inputTerm),
-      ]);
-      const dictionary =
-        dictionaryResult.status === "fulfilled" ? dictionaryResult.value : {};
-      const translationData =
-        translationResult.status === "fulfilled"
-          ? translationResult.value
-          : { translation: "", options: [] };
+      const dictionaryResult = await Promise.resolve(lookupWord(inputTerm));
+      const dictionary = dictionaryResult || {};
       const word = {
         ...dictionary,
         term: dictionary.term || inputTerm,
         normalized: inputTerm.toLowerCase(),
-        translation: translationData.translation,
-        translationOptions: translationData.options,
       };
       setResult(word);
       if (word.term && word.normalized) {
@@ -489,44 +458,41 @@ export function ReadingPage() {
                     )}
                   </div>
                   <div className="result-divider" />
-                  <div className="result-label">Traduções em português</div>
-                  {result.translationOptions &&
-                  result.translationOptions.length > 0 ? (
-                    <div
-                      className="translation-options"
-                      aria-label="Escolha a tradução"
-                    >
-                      {result.translationOptions.map((option) => (
-                        <button
-                          className={`translation-option${option === result.translation ? " selected" : ""}`}
-                          key={option}
-                          type="button"
-                          onClick={() => {
-                            setResult({ ...result, translation: option });
-                            updateLookupTranslation(
-                              result.normalized || "",
-                              option,
-                            );
-                          }}
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="translation-text">
-                      {result.translation || "Tradução indisponível"}
-                    </div>
-                  )}
-                  <div className="result-divider" />
-                  <div className="result-label">
-                    Definition in English
-                    {result.definitionSource ? " · online" : ""}
-                  </div>
+                  <div className="result-label">Definição</div>
                   <div className="definition-text">
                     {result.definition ||
                       "Não foi possível carregar a definição agora."}
                   </div>
+                  {result.usageLabels?.length ? (
+                    <div className="dictionary-detail-row">
+                      <span className="result-label">USO</span>
+                      <div className="dictionary-tags">
+                        {result.usageLabels.map((label) => (
+                          <span key={label}>{label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {result.relatedWords?.length ? (
+                    <div className="dictionary-detail-row">
+                      <span className="result-label">
+                        PALAVRAS RELACIONADAS
+                      </span>
+                      <p className="dictionary-detail-copy">
+                        {result.relatedWords.join(", ")}
+                      </p>
+                    </div>
+                  ) : null}
+                  {result.examples?.length ? (
+                    <div className="dictionary-detail-row">
+                      <span className="result-label">EXEMPLOS</span>
+                      <div className="dictionary-examples">
+                        {result.examples.map((example) => (
+                          <p key={example}>{example}</p>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </article>
               ) : (
                 <div className="empty-large empty-state">
@@ -557,16 +523,15 @@ export function ReadingPage() {
                       >
                         <div className="word-meta">
                           <strong>{lookup.term}</strong>
-                          <small>
-                            {lookup.translation || "Tradução indisponível"}
-                          </small>
+                          {lookup.translation && (
+                            <small>{lookup.translation}</small>
+                          )}
                         </div>
                       </div>
                     ))}
                 </div>
               ) : (
                 <div className="empty-state">
-                  <strong>Ainda sem pesquisas</strong>As palavras que você
                   consultar durante esta leitura aparecem aqui.
                 </div>
               )}
@@ -588,12 +553,17 @@ export function ReadingPage() {
           <div className="reading-start-copy">
             <span className="eyebrow">HORA DE LEITURA</span>
             <h2>Qual livro você quer continuar?</h2>
-            <p>Escolha um livro em andamento ou cadastre um novo para acompanhar seu progresso.</p>
+            <p>
+              Escolha um livro em andamento ou cadastre um novo para acompanhar
+              seu progresso.
+            </p>
           </div>
-          {state.books.length ? (
+          {availableBooks.length ? (
             <div className="book-picker-list">
-              {state.books.map((book) => {
-                const progress = Math.round((book.currentPage / book.totalPages) * 100);
+              {availableBooks.map((book) => {
+                const progress = Math.round(
+                  (book.currentPage / book.totalPages) * 100,
+                );
                 return (
                   <div
                     className={`book-picker-item${selectedBookId === book.id ? " selected" : ""}`}
@@ -603,18 +573,22 @@ export function ReadingPage() {
                   >
                     <span className="book-picker-copy">
                       <strong>{book.title}</strong>
-                      <small>{book.author || "Livro sem autor"} · {progress}% concluído</small>
-                      <span className="book-progress-track"><span style={{ width: `${progress}%` }} /></span>
+                      <small>
+                        {book.author || "Livro sem autor"} · {progress}%
+                        concluído ·{" "}
+                        {book.language === "pt" ? "Português" : "Inglês"}
+                      </small>
+                      <span className="book-progress-track">
+                        <span style={{ width: `${progress}%` }} />
+                      </span>
                     </span>
                     <button
                       type="button"
                       className="delete-session-button"
                       title="Excluir livro"
                       onClick={(e) => {
-                        e.stopPropagation(); 
-                        if (confirm(`Deseja realmente excluir "${book.title}"?`)) {
-                          deleteBook(book.id);
-                        }
+                        e.stopPropagation();
+                        setBookToDelete(book.id);
                       }}
                     >
                       <Trash2 aria-hidden="true" />
@@ -624,22 +598,27 @@ export function ReadingPage() {
               })}
             </div>
           ) : (
-            <div className="empty-state book-empty-state">Você ainda não cadastrou nenhum livro.</div>
+            <div className="empty-state book-empty-state">
+              <strong>
+                {state.books.length
+                  ? "Você concluiu todos os livros"
+                  : "Você ainda não cadastrou nenhum livro"}
+              </strong>
+            </div>
           )}
           {selectedBook && (
-            <button className="button" type="button" onClick={() => startBook(selectedBook.id)}>
-              {selectedBook.title}<Play aria-hidden="true" /> 
+            <button
+              className="button"
+              type="button"
+              onClick={() => startBook(selectedBook.id)}
+            >
+              {selectedBook.title}
+              <Play aria-hidden="true" />
             </button>
           )}
-          <details className="new-book-details">
-            <summary>Cadastrar novo livro</summary>
-            <form className="new-book-form" onSubmit={createBook}>
-              <input className="field" placeholder="Título do livro" value={newBookTitle} onChange={(event) => setNewBookTitle(event.target.value)} required />
-              <input className="field" placeholder="Autor (opcional)" value={newBookAuthor} onChange={(event) => setNewBookAuthor(event.target.value)} />
-              <input className="field" type="number" min="1" placeholder="Total de páginas" value={newBookPages} onChange={(event) => setNewBookPages(event.target.value)} required />
-              <button className="button" type="submit">Cadastrar e começar</button>
-            </form>
-          </details>
+          <Link className="text-button reading-library-link" href="/books">
+            Cadastrar ou gerenciar livros →
+          </Link>
         </div>
         <GoalCard
           title="Sua meta de leitura"
@@ -686,7 +665,7 @@ export function ReadingPage() {
                   key={session.id || session.createdAt}
                 >
                   <summary>
-            <span className="history-date">
+                    <span className="history-date">
                       <strong>
                         {new Intl.DateTimeFormat("pt-BR", {
                           day: "numeric",
@@ -699,7 +678,8 @@ export function ReadingPage() {
                       </strong>
                       <small>
                         {session.bookId
-                          ? bookById.get(session.bookId)?.title || "Livro removido"
+                          ? bookById.get(session.bookId)?.title ||
+                            "Livro removido"
                           : "Sessão de leitura"}
                         {session.note ? ` · ${session.note}` : ""}
                       </small>
@@ -787,6 +767,18 @@ export function ReadingPage() {
           onConfirm={() => {
             remove(confirmAction);
             setConfirmAction(null);
+          }}
+        />
+      )}
+      {bookToDelete && (
+        <ConfirmModal
+          title="Excluir livro?"
+          message={`O livro "${state.books.find((book) => book.id === bookToDelete)?.title || "selecionado"}" e seu progresso serão removidos.`}
+          confirmLabel="Excluir livro"
+          onCancel={() => setBookToDelete(null)}
+          onConfirm={() => {
+            deleteBook(bookToDelete);
+            setBookToDelete(null);
           }}
         />
       )}

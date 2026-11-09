@@ -12,17 +12,19 @@ import { useEffect, useState } from "react";
 import { NavIcon } from "@/components/ui/nav-icon";
 import { Menu, Settings, X } from "lucide-react";
 
-const toLocalDateString = (dateInput: string | Date | number | null | undefined): string | null => {
+const toLocalDateString = (
+  dateInput: string | Date | number | null | undefined,
+): string | null => {
   if (!dateInput) return null;
 
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return null;
 
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Fortaleza', 
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Fortaleza",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   });
 
   return formatter.format(d);
@@ -123,6 +125,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={navigate}
           >
             <NavIcon name="vocabulary" /> Meu vocabulário
+          </Link>
+          <Link
+            className={`nav-link ${pathname === "/books" ? "active" : ""}`}
+            href="/books"
+            onClick={navigate}
+          >
+            <NavIcon name="books" /> Meus livros
+          </Link>
+          <Link
+            className={`nav-link ${pathname === "/clubs" ? "active" : ""}`}
+            href="/clubs"
+            onClick={navigate}
+          >
+            <NavIcon name="clubs" /> Clubes do livro
           </Link>
         </nav>
         <div className="sidebar-bottom">

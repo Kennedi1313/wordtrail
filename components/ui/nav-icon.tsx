@@ -1,12 +1,15 @@
-import { BookOpen, Brain, Home, Library } from "lucide-react";
+import { BookOpen, Brain, Home, Letters, Library, Users } from "lucide-react";
 
-type NavIconName = "home" | "reading" | "practice" | "vocabulary";
+type NavIconName =
+  "home" | "reading" | "practice" | "vocabulary" | "books" | "clubs";
 
 const icons = {
   home: Home,
   reading: BookOpen,
   practice: Brain,
-  vocabulary: Library,
+  vocabulary: Letters,
+  books: Library,
+  clubs: Users,
 };
 
 export function NavIcon({ name }: { name: NavIconName }) {

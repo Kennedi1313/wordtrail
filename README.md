@@ -39,7 +39,7 @@ Sem configuração do Supabase, o app continua em modo local no navegador. Para 
 cp .env.example .env.local
 ```
 
-Reinicie `npm run dev` após alterar o arquivo. Com Supabase configurado, o app pede login Google; no primeiro login, os dados antigos do `localStorage` deste navegador são mesclados com a conta e enviados ao banco.
+Reinicie `npm run dev` após alterar o arquivo. Com Supabase configurado, o app pede login Google. Os dados da conta são carregados do servidor; o `localStorage` é usado apenas como cache de leitura. Na primeira leitura após a migração, os dados existentes no armazenamento legado do Supabase são convertidos para registros independentes.
 
 ## Publicar na Vercel
 
