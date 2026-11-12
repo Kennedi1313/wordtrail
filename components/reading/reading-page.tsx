@@ -65,6 +65,10 @@ export function ReadingPage() {
   } = useReadingSession();
   const [term, setTerm] = useState("");
   const [pages, setPages] = useState("");
+  const [stoppedAtPage, setStoppedAtPage] = useState("");
+  const [pageEntryMode, setPageEntryMode] = useState<"count" | "position">(
+    "count",
+  );
   const [note, setNote] = useState("");
   const [result, setResult] = useState<Partial<Word> | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -87,6 +91,9 @@ export function ReadingPage() {
     () => state.books.find((book) => book.id === selectedBookId),
     [selectedBookId, state.books],
   );
+  const activeBook = active?.bookId
+    ? bookById.get(active.bookId)
+    : undefined;
   const availableBooks = useMemo(
     () => state.books.filter((book) => book.currentPage < book.totalPages),
     [state.books],
@@ -191,8 +198,8 @@ export function ReadingPage() {
           <span className="eyebrow">SESSÃO FINALIZADA</span>
           <h1>Olha só o que você fez</h1>
           <p suppressHydrationWarning>
-            Seu tempo já está registrado. Se quiser, anote também quantas
-            páginas leu.
+            Seu tempo já está registrado. Você pode informar quantas páginas leu
+            ou marcar até onde chegou.
           </p>
         </section>
         <section className="reading-summary-card">
@@ -235,23 +242,108 @@ export function ReadingPage() {
             className="finish-reading-form"
             onSubmit={(event) => {
               event.preventDefault();
-              save(Number(pages) || 0, note);
+              const targetPage =
+                pageEntryMode === "position" && stoppedAtPage.trim()
+                  ? Number(stoppedAtPage)
+                  : undefined;
+              const pagesRead =
+                targetPage !== undefined && activeBook
+                  ? Math.max(0, targetPage - activeBook.currentPage)
+                  : Number(pages) || 0;
+              void Promise.resolve(save(pagesRead, note, targetPage))
+                .then(() => {
+                  setPageEntryMode("count");
+                  setPages("");
+                  setStoppedAtPage("");
+                })
+                .catch(() => undefined);
             }}
           >
-            <label>
-              <span className="input-label">
-                Quantas páginas você leu? (opcional)
-              </span>
-              <input
-                className="field"
-                type="number"
-                min="1"
-                max="10000"
-                placeholder="ex.: 18"
-                value={pages}
-                onChange={(event) => setPages(event.target.value)}
-              />
-            </label>
+            {activeBook && (
+              <fieldset className="page-entry-choice">
+                <legend>Como prefere registrar o progresso?</legend>
+                <div className="page-entry-options">
+                  <label
+                    className={
+                      pageEntryMode === "count" ? "page-entry-option selected" : "page-entry-option"
+                    }
+                  >
+                    <input
+                      type="radio"
+                      name="page-entry-mode"
+                      value="count"
+                      checked={pageEntryMode === "count"}
+                      onChange={() => setPageEntryMode("count")}
+                    />
+                    <span>
+                      <strong>Quantas páginas você leu?</strong>
+                      <small>Informe quantas páginas avançou.</small>
+                    </span>
+                  </label>
+                  <label
+                    className={
+                      pageEntryMode === "position" ? "page-entry-option selected" : "page-entry-option"
+                    }
+                  >
+                    <input
+                      type="radio"
+                      name="page-entry-mode"
+                      value="position"
+                      checked={pageEntryMode === "position"}
+                      onChange={() => {
+                        setPageEntryMode("position");
+                        setStoppedAtPage((current) => current || String(activeBook.currentPage));
+                      }}
+                    />
+                    <span>
+                      <strong>Em qual página você parou?</strong>
+                      <small>O app calcula quantas páginas avançou.</small>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+            )}
+            {pageEntryMode === "position" && activeBook ? (
+              <label>
+                <span className="input-label">
+                  Em qual página você parou? (opcional)
+                </span>
+                <small className="field-hint">
+                  Progresso registrado: página {activeBook.currentPage} de{" "}
+                  {activeBook.totalPages}.
+                </small>
+                <input
+                  className="field"
+                  type="number"
+                  min={activeBook.currentPage}
+                  max={activeBook.totalPages}
+                  step="1"
+                  placeholder={String(activeBook.currentPage)}
+                  value={stoppedAtPage}
+                  required
+                  onChange={(event) => setStoppedAtPage(event.target.value)}
+                />
+              </label>
+            ) : (
+              <label>
+                <span className="input-label">
+                  Quantas páginas você leu? (opcional)
+                </span>
+                <small className="field-hint">
+                  Progresso registrado: insira quantas páginas você leu agora.
+                </small>
+                <input
+                  className="field"
+                  type="number"
+                  min="1"
+                  max="10000"
+                  step="1"
+                  placeholder="ex.: 18"
+                  value={pages}
+                  onChange={(event) => setPages(event.target.value)}
+                />
+              </label>
+            )}
             <label>
               <span className="input-label">Anotações (opcional)</span>
               <input

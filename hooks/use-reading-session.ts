@@ -89,40 +89,62 @@ export function useReadingSession() {
     }));
   }, [active, setState]);
   const save = useCallback(
-    (pages: number, note: string) => {
+    (pages: number, note: string, stoppedAtPage?: number) => {
       if (!active?.endedAt) return;
-      const completed = { ...active, pages, note };
-      return setState((current) => ({
-        ...current,
-        activeReadingSession: null,
-        readingSessions: [completed, ...current.readingSessions],
-        books: completed.bookId
-          ? current.books.map((book) =>
-              book.id === completed.bookId
-                ? {
-                    ...book,
-                    currentPage: Math.min(book.totalPages, book.currentPage + pages),
-                    updatedAt: new Date().toISOString(),
-                  }
-                : book,
-            )
-          : current.books,
-        words: Object.values(active.pendingWords || {}).reduce(
-          (words, word) => {
-            const existing = words.find(
-              (item) => item.normalized === word.normalized,
-            );
-            return existing
-              ? words.map((item) =>
-                  item.normalized === word.normalized
-                    ? { ...item, ...word }
-                    : item,
-                )
-              : [word, ...words];
-          },
-          current.words,
-        ),
-      }));
+      return setState((current) => {
+        const book = current.books.find((item) => item.id === active.bookId);
+        const targetPage =
+          book && Number.isFinite(stoppedAtPage)
+            ? Math.min(
+                book.totalPages,
+                Math.max(book.currentPage, Math.floor(stoppedAtPage!)),
+              )
+            : null;
+        const pagesRead =
+          targetPage !== null && book
+            ? targetPage - book.currentPage
+            : Math.max(0, Math.floor(pages));
+        return {
+          ...current,
+          activeReadingSession: null,
+          readingSessions: [
+            {
+              ...active,
+              pages: pagesRead,
+              note,
+            },
+            ...current.readingSessions,
+          ],
+          books: active.bookId
+            ? current.books.map((item) =>
+                item.id === active.bookId
+                  ? {
+                      ...item,
+                      currentPage:
+                        targetPage ??
+                        Math.min(item.totalPages, item.currentPage + pagesRead),
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : item,
+              )
+            : current.books,
+          words: Object.values(active.pendingWords || {}).reduce(
+            (words, word) => {
+              const existing = words.find(
+                (item) => item.normalized === word.normalized,
+              );
+              return existing
+                ? words.map((item) =>
+                    item.normalized === word.normalized
+                      ? { ...item, ...word }
+                      : item,
+                  )
+                : [word, ...words];
+            },
+            current.words,
+          ),
+        };
+      });
     },
     [active, setState],
   );

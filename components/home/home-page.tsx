@@ -34,7 +34,49 @@ export function HomePage() {
     settings.dailyGoal,
     now,
   );
-  
+  const recentActivity = useMemo(() => {
+    if (!ready) return [];
+    const definitions = new Map(
+      words.map((word) => [word.normalized.trim().toLowerCase(), word.definition]),
+    );
+    const sessions = [
+      ...state.readingSessions,
+      ...(state.activeReadingSession ? [state.activeReadingSession] : []),
+    ];
+    const lookups = sessions.flatMap((session) =>
+      (session.lookups || []).map((lookup) => ({
+        kind: "lookup" as const,
+        at: lookup.at,
+        term: lookup.term,
+        definition:
+          lookup.definition || definitions.get(lookup.normalized.trim().toLowerCase()),
+      })),
+    );
+    const latestLookups = [...lookups]
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+      .slice(0, 2);
+    const latestSession = [...state.readingSessions]
+      .filter((session) => Boolean(session.endedAt || session.active === false))
+      .sort(
+        (a, b) =>
+          Date.parse(b.endedAt || b.startedAt) -
+          Date.parse(a.endedAt || a.startedAt),
+      )[0];
+    const items = [
+      ...latestLookups,
+      ...(latestSession
+        ? [
+            {
+              kind: "session" as const,
+              at: latestSession.endedAt || latestSession.startedAt,
+              session: latestSession,
+            },
+          ]
+        : []),
+    ];
+    return items.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  }, [ready, state.activeReadingSession, state.readingSessions, words]);
+
   return (
     <>
       <section className="page-intro">
@@ -137,37 +179,43 @@ export function HomePage() {
                 <span className="loading-spinner" aria-hidden="true" />
                 <span>Carregando sua atividade…</span>
               </div>
-            ) : state.readingSessions.length ? (
+            ) : recentActivity.length ? (
               <div className="activity-list">
-                {words.slice(0, 2).map((word) => (
-                  <div className="activity-item" key={word.normalized.trim().toLowerCase() || word.term.trim().toLowerCase()}>
-                    <span className="activity-dot" />
-                    <div>
-                      <strong>Você pesquisou {word.term}</strong>
-                      <small>
-                        {word.definition || "Definição indisponível"}
-                      </small>
+                {recentActivity.map((item, index) => {
+                  const date = new Intl.DateTimeFormat("pt-BR", {
+                    timeZone: "America/Fortaleza",
+                    day: "numeric",
+                    month: "long",
+                  }).format(new Date(item.at));
+                  return (
+                    <div className="activity-item" key={`${item.kind}-${item.at}-${index}`}>
+                      <span className="activity-dot" />
+                      <div>
+                        {item.kind === "lookup" ? (
+                          <>
+                            <strong>Você pesquisou {item.term}</strong>
+                            <small>
+                              {item.definition || "Definição indisponível"} · {date}
+                            </small>
+                          </>
+                        ) : (
+                          <>
+                            <strong>
+                              {Math.floor(
+                                Math.max(
+                                  item.session.seconds || 0,
+                                  item.session.durationSeconds || 0,
+                                  (item.session.minutes || 0) * 60,
+                                ) / 60,
+                              )} min · {item.session.pages || 0} páginas de leitura
+                            </strong>
+                            <small>{date}</small>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                <div className="activity-item">
-                  <span className="activity-dot" />
-                  <div>
-                    <strong>
-                      {todayMinutes} min · {state.readingSessions[0].pages || 0}{" "}
-                      páginas de leitura
-                    </strong>
-                    <small>
-                      {new Date(
-                        state.readingSessions[0].createdAt ||
-                          state.readingSessions[0].startedAt,
-                      ).toLocaleDateString("pt-BR", {
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </small>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="empty-state">

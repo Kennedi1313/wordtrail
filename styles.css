@@ -4544,6 +4544,82 @@ h3 {
 .finish-reading-form .input-label {
   margin-top: 0;
 }
+.finish-reading-form .field-hint {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.page-entry-choice {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.page-entry-choice legend {
+  margin-bottom: var(--space-2);
+  color: var(--color-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+.page-entry-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.page-entry-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 88px;
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+}
+.page-entry-option:hover {
+  border-color: var(--color-primary-border);
+}
+.page-entry-option.selected {
+  border-color: var(--color-highlight);
+  background: var(--color-primary-tint);
+  box-shadow: inset 0 0 0 1px var(--color-highlight);
+}
+.page-entry-option:focus-within {
+  outline: 3px solid var(--color-focus-strong);
+  outline-offset: 2px;
+}
+.page-entry-option input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--color-primary);
+}
+.page-entry-option.selected input {
+  accent-color: var(--color-highlight);
+}
+.page-entry-option > span {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.page-entry-option strong {
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  line-height: var(--line-compact);
+}
+.page-entry-option small {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: var(--line-normal);
+}
 .finish-reading-form .form-actions {
   display: flex;
   align-items: center;
@@ -4562,6 +4638,10 @@ h3 {
 }
 
 @media (max-width: 760px) {
+  .page-entry-options {
+    grid-template-columns: 1fr;
+  }
+
   .reading-live-layout {
     grid-template-columns: 1fr;
   }
