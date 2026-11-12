@@ -1,21 +1,40 @@
 "use client";
-import { useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWordtrail } from "@/hooks/use-wordtrail";
 export default function Page() {
   const { settings, setSettings, ready } = useWordtrail();
-  const [saved, setSaved] = useState(false);
+  const [goal, setGoal] = useState(String(settings.dailyGoal));
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
+  useEffect(() => {
+    if (ready) setGoal(String(settings.dailyGoal));
+  }, [ready, settings.dailyGoal]);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const dailyGoal = Number(goal);
+    if (!Number.isInteger(dailyGoal) || dailyGoal < 1 || dailyGoal > 1440) return;
+    setSaving(true);
+    try {
+      await setSettings({ ...settings, dailyGoal });
+      router.push("/");
+    } catch {
+      // AppShell displays the server error and keeps this form available.
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <section
       className="modal-backdrop"
       style={{ position: "relative", minHeight: "calc(100vh - 120px)" }}
     >
-      <section
+      <form
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
+        onSubmit={save}
       >
         <div className="modal-header">
           <div>
@@ -35,37 +54,19 @@ export default function Page() {
           type="number"
           min="1"
           max="1440"
-          value={ready ? settings.dailyGoal : 30}
-          onChange={(event) =>
-            setSettings({
-              ...settings,
-              dailyGoal: Math.max(1, Number(event.target.value)),
-            })
-          }
+          value={goal}
+          onChange={(event) => setGoal(event.target.value)}
         />
         <p className="modal-note">
-          Por enquanto, palavras e progresso ficam salvos neste navegador.
-          Configure o Supabase para sincronizar entre dispositivos. APIs
-          públicas podem ter limites ou indisponibilidade.
+          Palavras, sessões e progresso são salvos diretamente no servidor.
+          Se a conexão cair, a alteração não será aplicada.
         </p>
         <div className="form-actions">
-          <div className="form-actions">
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setSaved(true);
-                window.setTimeout(() => router.push("/"), 900);
-              }}
-            >
-              Salvar configurações
-            </button>
-          </div>
-          <div className={`toast ${saved ? "show" : ""}`} role="status" aria-live="polite">
-            Configurações salvas.
-          </div>
+          <button type="submit" className="button" disabled={!ready || saving}>
+            {saving ? "Salvando no servidor…" : "Salvar configurações"}
+          </button>
         </div>
-      </section>
+      </form>
     </section>
   );
 }

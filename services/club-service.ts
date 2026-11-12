@@ -5,7 +5,7 @@ export type Club = {
   id: string;
   name: string;
   invite_code: string;
-  book_title: string;
+  book_title?: string | null;
   book_author?: string;
   created_by: string;
   created_at: string;
@@ -125,68 +125,27 @@ export async function syncClubReadingProfile(
   const failed = results.find((result) => result.error);
   if (failed?.error) throw failed.error;
 }
-function makeCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
-}
-export async function createClub(
-  userId: string,
-  input: { name: string; bookTitle: string; bookAuthor?: string },
-) {
+export async function createClub(input: { name: string }) {
   const client = requireClient();
-  const clubId = crypto.randomUUID();
-  const { error } = await client.from("wordtrail_clubs").insert({
-    id: clubId,
-    name: input.name,
-    book_title: input.bookTitle,
-    book_author: input.bookAuthor || null,
-    invite_code: makeCode(),
-    created_by: userId,
+  const name = input.name.trim();
+  if (name.length < 1 || name.length > 80)
+    throw new Error("O nome do clube deve ter entre 1 e 80 caracteres.");
+  const { data, error } = await client.rpc("create_wordtrail_club", {
+    club_name: name,
   });
   if (error) throw error;
-  const member = await client
-    .from("wordtrail_club_members")
-    .insert({ club_id: clubId, user_id: userId, role: "admin" });
-  if (member.error) throw member.error;
-  const memberRecord = await client
-    .from("wordtrail_club_members")
-    .select()
-    .eq("club_id", clubId)
-    .eq("user_id", userId)
-    .single();
-  if (memberRecord.error) throw memberRecord.error;
-  const club = await client
-    .from("wordtrail_clubs")
-    .select()
-    .eq("id", clubId)
-    .single();
-  if (club.error) throw club.error;
-  return { club: club.data as Club, member: memberRecord.data as ClubMember };
+  return data as { club: Club; member: ClubMember };
 }
-export async function joinClub(userId: string, inviteCode: string) {
+export async function joinClub(inviteCode: string) {
   const client = requireClient();
-  const clubResult = await client
-    .rpc("find_wordtrail_club_by_code", {
-      code: inviteCode.trim().toUpperCase(),
-    })
-    .single();
-  if (clubResult.error || !clubResult.data)
-    throw new Error("Clube não encontrado.");
-  const club = clubResult.data as Club;
-  const result = await client
-    .from("wordtrail_club_members")
-    .upsert(
-      { club_id: club.id, user_id: userId, role: "member" },
-      { onConflict: "club_id,user_id" },
-    );
-  if (result.error) throw result.error;
-  const member = await client
-    .from("wordtrail_club_members")
-    .select()
-    .eq("club_id", club.id)
-    .eq("user_id", userId)
-    .single();
-  if (member.error) throw member.error;
-  return { club, member: member.data as ClubMember };
+  const code = inviteCode.trim().toUpperCase();
+  if (code.length < 6 || code.length > 16)
+    throw new Error("Informe um código de convite válido.");
+  const { data, error } = await client.rpc("join_wordtrail_club", {
+    invite_token: code,
+  });
+  if (error) throw error;
+  return data as { club: Club; member: ClubMember };
 }
 export async function loadClubs(userId: string) {
   const client = requireClient();
@@ -220,6 +179,15 @@ export async function updateClubProgress(
     .update({ pages_read: Math.max(0, Math.floor(pagesRead)) })
     .eq("club_id", clubId)
     .eq("user_id", userId);
+  if (result.error) throw result.error;
+}
+
+export async function deleteClub(clubId: string, userId: string) {
+  const result = await requireClient()
+    .from("wordtrail_clubs")
+    .delete()
+    .eq("id", clubId)
+    .eq("created_by", userId);
   if (result.error) throw result.error;
 }
 
@@ -274,9 +242,15 @@ export async function createClubPost(
   title: string,
   body: string,
 ) {
+  const normalizedTitle = title.trim();
+  const normalizedBody = body.trim();
+  if (!clubId || normalizedTitle.length < 1 || normalizedTitle.length > 120)
+    throw new Error("O título deve ter entre 1 e 120 caracteres.");
+  if (normalizedBody.length < 1 || normalizedBody.length > 5000)
+    throw new Error("O texto deve ter entre 1 e 5000 caracteres.");
   const result = await requireClient()
     .from("wordtrail_club_posts")
-    .insert({ club_id: clubId, author_id: userId, title, body });
+    .insert({ club_id: clubId, author_id: userId, title: normalizedTitle, body: normalizedBody });
   if (result.error) throw result.error;
 }
 
@@ -285,9 +259,12 @@ export async function createClubReply(
   userId: string,
   body: string,
 ) {
+  const normalizedBody = body.trim();
+  if (!postId || normalizedBody.length < 1 || normalizedBody.length > 3000)
+    throw new Error("A resposta deve ter entre 1 e 3000 caracteres.");
   const result = await requireClient()
     .from("wordtrail_club_replies")
-    .insert({ post_id: postId, author_id: userId, body });
+    .insert({ post_id: postId, author_id: userId, body: normalizedBody });
   if (result.error) throw result.error;
 }
 

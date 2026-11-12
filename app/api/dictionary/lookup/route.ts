@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { fetchWithTimeout } from "@/lib/api/fetch-with-timeout";
+import { isDictionaryTerm } from "@/lib/api/request-validation";
 
 type MerriamEntry = {
   hwi?: { hw?: string; prs?: { mw?: string; sound?: { audio?: string } }[] };
@@ -62,17 +64,29 @@ export async function GET(request: Request) {
     );
   if (!term)
     return NextResponse.json({ error: "A word is required." }, { status: 400 });
+  if (!isDictionaryTerm(term))
+    return NextResponse.json({ error: "Invalid word." }, { status: 400 });
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://www.dictionaryapi.com/api/v3/references/collegiate/json/${encodeURIComponent(term)}?key=${encodeURIComponent(key)}`,
     { next: { revalidate: 86400 } },
-  );
+  ).catch(() => null);
+  if (!response)
+    return NextResponse.json({ error: "Dictionary request timed out." }, { status: 504 });
   if (!response.ok)
     return NextResponse.json(
       { error: "Dictionary unavailable." },
       { status: 502 },
     );
-  const entries = (await response.json()) as MerriamEntry[];
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return NextResponse.json({ error: "Dictionary returned an invalid response." }, { status: 502 });
+  }
+  if (!Array.isArray(payload))
+    return NextResponse.json({ error: "Dictionary returned an invalid response." }, { status: 502 });
+  const entries = payload as MerriamEntry[];
   const entry = entries.find(
     (item) => item && typeof item === "object" && (item.shortdef || item.def),
   );

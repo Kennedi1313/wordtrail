@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { fetchWithTimeout } from "@/lib/api/fetch-with-timeout";
+import { parsePracticeCount } from "@/lib/api/request-validation";
 type Entry = {
   shortdef?: string[];
   def?: unknown[];
@@ -32,19 +34,23 @@ export async function GET(request: Request) {
       { error: "Merriam-Webster API key is not configured." },
       { status: 503 },
     );
-  const count = Math.min(
-    20,
-    Math.max(1, Number(new URL(request.url).searchParams.get("count") || 20)),
-  );
-  const random = await fetch(
+  const count = parsePracticeCount(new URL(request.url).searchParams.get("count"));
+  const random = await fetchWithTimeout(
     `https://random-word-api.herokuapp.com/word?number=${count * 2}`,
-  );
+  ).catch(() => null);
+  if (!random)
+    return NextResponse.json({ error: "Random word request timed out." }, { status: 504 });
   if (!random.ok)
     return NextResponse.json(
       { error: "Random word API unavailable." },
       { status: 502 },
     );
-  const randomWords: unknown = await random.json();
+  let randomWords: unknown;
+  try {
+    randomWords = await random.json();
+  } catch {
+    return NextResponse.json({ error: "Random word API returned an invalid response." }, { status: 502 });
+  }
   const terms: string[] = Array.isArray(randomWords)
     ? [
         ...new Set(
@@ -55,15 +61,24 @@ export async function GET(request: Request) {
         ),
       ]
     : [];
-  const words = (
-    await Promise.all(
-      terms.map(async (term) => {
-        const response = await fetch(
+  const boundedTerms = terms.slice(0, count);
+  const words = [];
+  for (let offset = 0; offset < boundedTerms.length; offset += 5) {
+    const batch = await Promise.all(
+      boundedTerms.slice(offset, offset + 5).map(async (term) => {
+        const response = await fetchWithTimeout(
           `https://www.dictionaryapi.com/api/v3/references/collegiate/json/${encodeURIComponent(term)}?key=${encodeURIComponent(key)}`,
           { next: { revalidate: 86400 } },
-        );
-        if (!response.ok) return null;
-        const entries = (await response.json()) as Entry[];
+        ).catch(() => null);
+        if (!response?.ok) return null;
+        let payload: unknown;
+        try {
+          payload = await response.json();
+        } catch {
+          return null;
+        }
+        if (!Array.isArray(payload)) return null;
+        const entries = payload as Entry[];
         const entry = entries.find((item) => item.shortdef?.length);
         return {
           term,
@@ -76,9 +91,8 @@ export async function GET(request: Request) {
           lookups: 0,
         };
       }),
-    )
-  ).filter((word): word is NonNullable<typeof word> =>
-    Boolean(word?.definition),
-  );
+    );
+    words.push(...batch.filter((word): word is NonNullable<typeof word> => Boolean(word?.definition)));
+  }
   return NextResponse.json({ words: words.slice(0, count) });
 }

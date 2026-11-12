@@ -16,7 +16,7 @@ import { useSoundEffects } from "@/hooks/use-sound-effects";
 export function PracticePage() {
   const MINIMUM_WORDS = 10;
   const MAXIMUM_ROUND_WORDS = 10;
-  const { state, setState } = useWordtrail();
+  const { state, setState, dueWords } = useWordtrail();
   const { playCorrect, playIncorrect, playComplete } = useSoundEffects();
   const [source, setSource] = useState<"vocabulary" | "dictionary">(
     "vocabulary",
@@ -33,6 +33,7 @@ export function PracticePage() {
   const [index, setIndex] = useState<number | null>(null);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<boolean | null>(null);
+  const [answerSaving, setAnswerSaving] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(300);
   const [practiceSummary, setPracticeSummary] = useState<{
@@ -49,14 +50,12 @@ export function PracticePage() {
   const options = useMemo(() => {
     if (!word || mode !== "quiz") return [];
     if (source === "dictionary") {
-      return [
+      return shuffle([
         word,
         ...activeWords
           .filter((item) => item.normalized !== word.normalized)
           .slice(0, 3),
-      ]
-        .sort(() => Math.random() - 0.5)
-        .map((item) => ({
+      ]).map((item) => ({
           value: item.term,
           correct: item.normalized === word.normalized,
         }));
@@ -122,31 +121,33 @@ export function PracticePage() {
     setAnswer("");
     setSecondsLeft(300);
   }
-  function answerWord(correct: boolean, selectedValue?: string) {
-    if (!word || feedback !== null) return;
-    setSelectedOption(selectedValue ?? null);
-    setFeedback(correct);
-    if (correct) playCorrect();
-    else playIncorrect();
-    setAnswered((value) => value + 1);
-    if (correct) setCorrectAnswers((value) => value + 1);
-    setState((current) => ({
-      ...current,
-      reviews: [
-        ...current.reviews,
-        {
-          at: new Date().toISOString(),
-          term: word.term,
-          correct,
-          mode,
-        },
-      ],
-      words: current.words.map((item) =>
-        item.normalized === word.normalized
-          ? updateReview(item, correct)
-          : item,
-      ),
-    }));
+  async function answerWord(correct: boolean, selectedValue?: string) {
+    if (!word || feedback !== null || answerSaving) return;
+    setAnswerSaving(true);
+    try {
+      await setState((current) => ({
+        ...current,
+        reviews: [
+          ...current.reviews,
+          { at: new Date().toISOString(), term: word.term, correct, mode },
+        ],
+        words: current.words.map((item) =>
+          item.normalized === word.normalized
+            ? updateReview(item, correct)
+            : item,
+        ),
+      }));
+      setSelectedOption(selectedValue ?? null);
+      setFeedback(correct);
+      if (correct) playCorrect();
+      else playIncorrect();
+      setAnswered((value) => value + 1);
+      if (correct) setCorrectAnswers((value) => value + 1);
+    } catch {
+      // AppShell displays the server error; keep this question unanswered.
+    } finally {
+      setAnswerSaving(false);
+    }
   }
   function next() {
     if (answered >= MAXIMUM_ROUND_WORDS) {
@@ -239,7 +240,7 @@ export function PracticePage() {
                     .map((review) => review.term),
                 ).size
               }
-              dueTotal={words.length}
+              dueTotal={dueWords.length}
               reviews={state.reviews}
               vocabularySize={state.words.length}
               mode={mode}
@@ -446,7 +447,7 @@ export function PracticePage() {
                         <button
                           className={`quiz-option ${feedback !== null && option.correct ? "correct" : ""} ${feedback !== null && selectedOption === option.value && !option.correct ? "wrong" : ""}`}
                           key={option.value}
-                          disabled={feedback !== null}
+                          disabled={feedback !== null || answerSaving}
                           onClick={() =>
                             answerWord(option.correct, option.value)
                           }
@@ -547,7 +548,7 @@ export function PracticePage() {
                       <button
                         className="button"
                         type="button"
-                        disabled={!answer.trim()}
+                        disabled={!answer.trim() || answerSaving}
                         onClick={() =>
                           answerWord(
                             answer.trim().toLowerCase() ===

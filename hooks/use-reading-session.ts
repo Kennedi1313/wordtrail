@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ReadingSession, Word } from "@/types/domain";
 import { useWordtrail } from "@/hooks/use-wordtrail";
+import { localReadingDate } from "@/services/reading-stats";
 
 export function useReadingSession() {
   const { state, setState } = useWordtrail();
@@ -31,17 +32,17 @@ export function useReadingSession() {
       id: crypto.randomUUID(),
       bookId,
       startedAt,
-      date: startedAt.slice(0, 10),
+      date: localReadingDate(startedAt),
       seconds: 0,
       durationSeconds: 0,
       pages: 0,
       lookups: [],
     };
-    setState((current) => ({ ...current, activeReadingSession: session }));
+    return setState((current) => ({ ...current, activeReadingSession: session }));
   }, [setState, state.activeReadingSession]);
   const finish = useCallback(() => {
     if (!active) return;
-    setState((current) => ({
+    return setState((current) => ({
       ...current,
       activeReadingSession: {
         ...active,
@@ -57,7 +58,7 @@ export function useReadingSession() {
     if (!active || active.endedAt || active.active === false) return;
     const pausedAt = Date.now();
     setNow(pausedAt);
-    setState((current) => ({
+    return setState((current) => ({
       ...current,
       activeReadingSession: current.activeReadingSession
         ? {
@@ -75,7 +76,7 @@ export function useReadingSession() {
     const seconds = active.seconds || 0;
     const resumedAt = Date.now();
     setNow(resumedAt);
-    setState((current) => ({
+    return setState((current) => ({
       ...current,
       activeReadingSession: current.activeReadingSession
         ? {
@@ -91,7 +92,7 @@ export function useReadingSession() {
     (pages: number, note: string) => {
       if (!active?.endedAt) return;
       const completed = { ...active, pages, note };
-      setState((current) => ({
+      return setState((current) => ({
         ...current,
         activeReadingSession: null,
         readingSessions: [completed, ...current.readingSessions],
@@ -178,12 +179,12 @@ export function useReadingSession() {
         at: new Date().toISOString(),
         term: word.term,
         normalized: word.normalized,
-        translation: word.translation,
+        definition: word.definition,
         wasKnown: state.words.some(
           (item) => item.normalized === word.normalized,
         ),
       };
-      setState((current) => ({
+      return setState((current) => ({
         ...current,
         activeReadingSession: current.activeReadingSession
           ? {
@@ -213,33 +214,6 @@ export function useReadingSession() {
     },
     [active, setState, state.words],
   );
-  const updateLookupTranslation = useCallback(
-    (normalized: string, translation: string) =>
-      setState((current) => ({
-        ...current,
-        activeReadingSession: current.activeReadingSession
-          ? {
-              ...current.activeReadingSession,
-              lookups: (current.activeReadingSession.lookups || []).map(
-                (lookup) =>
-                  lookup.normalized === normalized
-                    ? { ...lookup, translation }
-                    : lookup,
-              ),
-              pendingWords: current.activeReadingSession.pendingWords
-                ? {
-                    ...current.activeReadingSession.pendingWords,
-                    [normalized]: {
-                      ...current.activeReadingSession.pendingWords[normalized],
-                      translation,
-                    },
-                  }
-                : current.activeReadingSession.pendingWords,
-            }
-          : null,
-      })),
-    [setState],
-  );
   return {
     active,
     elapsed,
@@ -252,7 +226,6 @@ export function useReadingSession() {
     discard,
     remove,
     trackLookup,
-    updateLookupTranslation,
     history: state.readingSessions,
   };
 }

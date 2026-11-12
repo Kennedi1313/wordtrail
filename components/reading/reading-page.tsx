@@ -97,20 +97,19 @@ export function ReadingPage() {
     }
   }, [availableBooks, selectedBookId]);
 
-  function startBook(bookId: string) {
-    if (bookId) start(bookId);
+  async function startBook(bookId: string) {
+    if (bookId) await start(bookId);
   }
 
-  function deleteBook(bookId: string) {
-    setState((current) => {
+  async function deleteBook(bookId: string) {
+    await setState((current) => {
       const updatedBooks = current.books.filter((book) => book.id !== bookId);
       return {
         ...current,
         books: updatedBooks,
-        selectedBookId:
-          selectedBookId === bookId ? null : updatedBooks[0]?.id || null,
       };
     });
+    if (selectedBookId === bookId) setSelectedBookId("");
   }
 
   async function search(event: FormEvent, requestedTerm = term) {
@@ -124,14 +123,12 @@ export function ReadingPage() {
     setActiveSuggestionIndex(-1);
     setSearching(true);
     try {
-      const dictionaryResult = await Promise.resolve(lookupWord(inputTerm));
-      const dictionary = dictionaryResult || {};
+      const dictionary = (await lookupWord(inputTerm)) || {};
       const word = {
         ...dictionary,
         term: dictionary.term || inputTerm,
         normalized: inputTerm.toLowerCase(),
       };
-      setResult(word);
       if (word.term && word.normalized) {
         const saved = {
           ...word,
@@ -139,8 +136,9 @@ export function ReadingPage() {
           normalized: word.normalized,
           lookups: 1,
         };
-        trackLookup(saved);
+        await trackLookup(saved);
       }
+      setResult(word);
     } catch (error) {
       setResult(null);
       setSearchError(
@@ -175,20 +173,18 @@ export function ReadingPage() {
     );
     const lookupGroups = new Map<
       string,
-      { term: string; translation?: string; count: number; wasKnown: boolean }
+      { term: string; definition?: string; count: number; wasKnown: boolean }
     >();
     active.lookups.forEach((lookup) => {
       const current = lookupGroups.get(lookup.normalized);
       lookupGroups.set(lookup.normalized, {
         term: current?.term || lookup.term,
-        translation: current?.translation || lookup.translation,
+        definition: current?.definition || lookup.definition,
         count: (current?.count || 0) + 1,
         wasKnown: Boolean(current?.wasKnown || lookup.wasKnown),
       });
     });
     const lookupSummary = [...lookupGroups.values()];
-    const repeatedWords = lookupSummary.filter((word) => word.count > 1);
-    const knownWords = lookupSummary.filter((word) => word.wasKnown);
     return (
       <section>
         <section className="page-intro">
@@ -216,24 +212,6 @@ export function ReadingPage() {
               </strong>
             </div>
           </div>
-          <div className="summary-stats">
-            <div>
-              <strong>{repeatedWords.length}</strong>
-              <small>
-                {repeatedWords.length === 1
-                  ? "palavra pesquisada mais de uma vez"
-                  : "palavras repetidas nesta sessão"}
-              </small>
-            </div>
-            <div>
-              <strong>{knownWords.length}</strong>
-              <small>
-                {knownWords.length === 1
-                  ? "palavra já pesquisada antes"
-                  : "palavras já pesquisadas antes"}
-              </small>
-            </div>
-          </div>
           {lookupSummary.length ? (
             <div className="session-word-summary">
               <h3>Palavras que apareceram</h3>
@@ -241,7 +219,7 @@ export function ReadingPage() {
                 <div className="summary-word-row" key={word.term}>
                   <span>
                     <strong>{word.term}</strong>
-                    <small>{word.translation || "Tradução indisponível"}</small>
+                    <small>{word.definition || "Definição indisponível"}</small>
                   </span>
                   <WordCountBadge count={word.count} />
                 </div>
@@ -306,10 +284,7 @@ export function ReadingPage() {
               message="O tempo e as pesquisas desta sessão serão descartados."
               confirmLabel="Sair sem salvar"
               onCancel={() => setConfirmAction(null)}
-              onConfirm={() => {
-                setConfirmAction(null);
-                discard();
-              }}
+              onConfirm={() => void discard().then(() => setConfirmAction(null)).catch(() => undefined)}
             />
           )}
         </section>
@@ -496,8 +471,7 @@ export function ReadingPage() {
                 </article>
               ) : (
                 <div className="empty-large empty-state">
-                  <strong>Seu próximo achado tá esperando</strong>Digite a
-                  palavra que encontrou e volte pro livro.
+                  Digite a palavra que encontrou e volte pro livro.
                 </div>
               )}
             </div>
@@ -523,8 +497,8 @@ export function ReadingPage() {
                       >
                         <div className="word-meta">
                           <strong>{lookup.term}</strong>
-                          {lookup.translation && (
-                            <small>{lookup.translation}</small>
+                          {lookup.definition && (
+                            <small>{lookup.definition}</small>
                           )}
                         </div>
                       </div>
@@ -582,17 +556,6 @@ export function ReadingPage() {
                         <span style={{ width: `${progress}%` }} />
                       </span>
                     </span>
-                    <button
-                      type="button"
-                      className="delete-session-button"
-                      title="Excluir livro"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setBookToDelete(book.id);
-                      }}
-                    >
-                      <Trash2 aria-hidden="true" />
-                    </button>
                   </div>
                 );
               })}
@@ -612,8 +575,8 @@ export function ReadingPage() {
               type="button"
               onClick={() => startBook(selectedBook.id)}
             >
-              {selectedBook.title}
               <Play aria-hidden="true" />
+              {selectedBook.title}
             </button>
           )}
           <Link className="text-button reading-library-link" href="/books">
@@ -730,12 +693,19 @@ export function ReadingPage() {
                         const count = lookups.filter(
                           (item) => item.normalized === lookup.normalized,
                         ).length;
+                        const savedWord =
+                          session.pendingWords?.[lookup.normalized] ||
+                          session.wordSnapshots?.[lookup.normalized] ||
+                          state.words.find(
+                            (word) => word.normalized === lookup.normalized,
+                          );
+                        const definition = savedWord?.definition;
                         return (
                           <div className="word-row" key={lookup.normalized}>
                             <div className="word-meta">
                               <strong>{lookup.term}</strong>
                               <small>
-                                {lookup.translation || "Tradução indisponível"}
+                                {definition || "Definição indisponível"}
                               </small>
                             </div>
                             <WordCountBadge count={count} />
@@ -753,8 +723,7 @@ export function ReadingPage() {
             })
         ) : (
           <div className="empty-state">
-            <strong>Seu histórico começa aqui</strong>Depois da primeira sessão,
-            o resumo e as palavras pesquisadas ficam salvos aqui.
+            Depois da primeira sessão, o resumo e as palavras pesquisadas ficam salvos aqui.
           </div>
         )}
       </div>
@@ -764,10 +733,7 @@ export function ReadingPage() {
           message="Esta sessão e suas pesquisas serão removidas deste navegador."
           confirmLabel="Apagar sessão"
           onCancel={() => setConfirmAction(null)}
-          onConfirm={() => {
-            remove(confirmAction);
-            setConfirmAction(null);
-          }}
+          onConfirm={() => void remove(confirmAction).then(() => setConfirmAction(null)).catch(() => undefined)}
         />
       )}
       {bookToDelete && (
@@ -776,10 +742,7 @@ export function ReadingPage() {
           message={`O livro "${state.books.find((book) => book.id === bookToDelete)?.title || "selecionado"}" e seu progresso serão removidos.`}
           confirmLabel="Excluir livro"
           onCancel={() => setBookToDelete(null)}
-          onConfirm={() => {
-            deleteBook(bookToDelete);
-            setBookToDelete(null);
-          }}
+          onConfirm={() => void deleteBook(bookToDelete).then(() => setBookToDelete(null)).catch(() => undefined)}
         />
       )}
     </section>

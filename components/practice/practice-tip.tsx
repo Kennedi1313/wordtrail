@@ -6,7 +6,7 @@ export function PracticeTip() {
           <strong>Uma sessão de 5 minutos</strong>
           <small>
             Flashcards mostram a definição; na múltipla escolha, você associa a
-            palavra à tradução.
+            definição à palavra correspondente.
           </small>
         </div>
       </div>

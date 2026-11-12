@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { GoalCard } from "@/components/shared/goal-card";
 import { StartCard } from "@/components/shared/start-card";
 import { StatCards } from "@/components/shared/stat-cards";
-import { Club, ClubMember, loadClubs } from "@/services/club-service";
+import { Club, ClubMember, deleteClub, loadClubs } from "@/services/club-service";
 import { useWordtrail } from "@/hooks/use-wordtrail";
 import { ClubForum } from "@/components/clubs/club-forum";
-import { ArrowRight, Check, Copy, Users } from "lucide-react";
+import { ArrowRight, Check, Copy, Hash, Trash2, Users } from "lucide-react";
+import { ConfirmModal } from "@/components/shared/confirm-modal";
 
 function getProfilePagesRead(
   member: ClubMember | undefined,
@@ -26,6 +27,7 @@ function getProfilePagesRead(
 
 export default function ClubDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { userId, state, settings, ready } = useWordtrail();
   const [club, setClub] = useState<Club | null>(null);
   const [members, setMembers] = useState<ClubMember[]>([]);
@@ -33,6 +35,8 @@ export default function ClubDetailPage() {
   const [copyStatus, setCopyStatus] = useState<"copied" | "failed" | null>(
     null,
   );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function copyInviteCode() {
     try {
@@ -75,6 +79,7 @@ export default function ClubDetailPage() {
   if (!club || !userId) return <main aria-busy="true" />;
 
   const currentMember = members.find((member) => member.user_id === userId);
+  const isAdmin = currentMember?.role === "admin";
   const currentPagesRead = getProfilePagesRead(
     currentMember,
     state.readingSessions,
@@ -130,26 +135,42 @@ export default function ClubDetailPage() {
       </Link>
       <section className="home-grid club-home-grid">
         <StartCard
-          eyebrow="UM PASSINHO DE CADA VEZ"
-          title="Traga mais alguém pra leitura"
-          description={`Convide uma pessoa para ler “${club.book_title}” com vocês.`}
+          className="club-identity-card"
+          eyebrow="CLUBE DE LEITURA"
+          title={club.name}
+          description="Converse, acompanhe o ranking e mantenha o grupo por perto."
+          children={
+            <div className="club-identity-meta">
+              <span><Users aria-hidden="true" /> <strong>{members.length}</strong> participantes</span>
+              <span><Hash aria-hidden="true" /> código <strong>{club.invite_code}</strong></span>
+            </div>
+          }
           action={
-            <button
-              className="button club-invite-action"
-              type="button"
-              onClick={() => void copyInviteCode()}
-            >
-              {copyStatus === "copied" ? (
-                <Check size={17} />
-              ) : (
-                <Copy size={17} />
+            <div className="club-identity-actions">
+              <button
+                className="button club-invite-action"
+                type="button"
+                onClick={() => void copyInviteCode()}
+              >
+                {copyStatus === "copied" ? <Check size={17} /> : <Copy size={17} />}
+                {copyStatus === "copied"
+                  ? "Convite copiado!"
+                  : copyStatus === "failed"
+                    ? "Tente copiar novamente"
+                    : "Copiar convite"}
+              </button>
+              {isAdmin && (
+                <button
+                  className="club-delete-button"
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={deleting}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                  Excluir clube
+                </button>
               )}
-              {copyStatus === "copied"
-                ? "Convite copiado!"
-                : copyStatus === "failed"
-                  ? "Tente copiar novamente"
-                  : `Copiar código · ${club.invite_code}`}
-            </button>
+            </div>
           }
         />
         <GoalCard
@@ -199,6 +220,31 @@ export default function ClubDetailPage() {
       <div id="club-forum">
         <ClubForum clubId={club.id} userId={userId} members={members} />
       </div>
+      {confirmDelete && (
+        <ConfirmModal
+          title="Excluir clube?"
+          message="O clube, participantes, tópicos e respostas serão removidos permanentemente."
+          confirmLabel={deleting ? "Excluindo…" : "Excluir clube"}
+          onCancel={() => {
+            if (!deleting) setConfirmDelete(false);
+          }}
+          onConfirm={() => {
+            if (deleting) return;
+            setDeleting(true);
+            void deleteClub(club.id, userId)
+              .then(() => router.replace("/clubs"))
+              .catch((reason) => {
+                setDeleting(false);
+                setError(
+                  reason instanceof Error
+                    ? reason.message
+                    : "Não foi possível excluir o clube.",
+                );
+                setConfirmDelete(false);
+              });
+          }}
+        />
+      )}
     </section>
   );
 }

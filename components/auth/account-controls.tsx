@@ -1,17 +1,20 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 export function AccountControls() {
+  const [mounted, setMounted] = useState(false);
   const { user, ready, signIn, signOut, configured } = useAuth();
+  useEffect(() => setMounted(true), []);
   if (!configured)
     return (
       <div className="sidebar-account-note">
         <span className="account-avatar" aria-hidden="true">
           W
         </span>
-        <span>Salvo neste navegador</span>
+        <span>Servidor indisponível</span>
       </div>
     );
-  if (!ready) return <small>Conectando…</small>;
+  if (!mounted || !ready) return <small>Conectando…</small>;
   return user ? (
     <div className="sidebar-account-info">
       <span className="account-avatar" aria-hidden="true">

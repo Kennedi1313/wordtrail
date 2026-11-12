@@ -16,11 +16,14 @@ export function VocabularySearch({
   const suggestions = useMemo(() => {
     const query = value.trim().toLowerCase();
     if (query.length < 2) return [];
-    return words
-      .filter((word) =>
-        `${word.term} ${word.translation || ""}`.toLowerCase().includes(query),
-      )
-      .slice(0, 6);
+    const seen = new Set<string>();
+    return words.filter((word) => {
+      const normalized = word.normalized.trim().toLowerCase() || word.term.trim().toLowerCase();
+      const matches = word.term.toLowerCase().includes(query);
+      if (!matches || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    }).slice(0, 6);
   }, [value, words]);
 
   function submit(event: FormEvent) {
@@ -63,11 +66,11 @@ export function VocabularySearch({
             <button
               type="button"
               className="suggestion-option"
-              key={word.normalized}
+              key={word.normalized.trim().toLowerCase() || word.term.trim().toLowerCase()}
               onClick={() => choose(word.term)}
             >
               <strong>{word.term}</strong>
-              {word.translation && <small>{word.translation}</small>}
+              {word.definition && <small>{word.definition}</small>}
             </button>
           ))}
         </div>

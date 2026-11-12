@@ -81,7 +81,7 @@ export default function ClubMembersPage() {
       <section className="page-intro">
         <span className="eyebrow">{club.name}</span>
         <h1>Participantes</h1>
-        <p>Conheça quem está lendo “{club.book_title}” com você.</p>
+        <p>Conheça as pessoas que fazem parte deste clube.</p>
       </section>
       <div className="club-member-grid">
         {ranking.map((member, index) => {

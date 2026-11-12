@@ -11,14 +11,12 @@ const words: Word[] = [
     term: "bright",
     normalized: "bright",
     definition: "giving out light",
-    translation: "brilhante",
     lookups: 1,
   },
   {
     term: "quiet",
     normalized: "quiet",
     definition: "making little noise",
-    translation: "silencioso",
     lookups: 1,
   },
 ];

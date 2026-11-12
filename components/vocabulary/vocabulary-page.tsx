@@ -8,9 +8,10 @@ import { VocabularySearch } from "../shared/vocabulary-search";
 import { lookupWord } from "@/services/dictionary-service";
 import { Word } from "@/types/domain";
 import { X } from "lucide-react";
+import { readingGoalStreak } from "@/services/reading-stats";
 
 export function VocabularyPage() {
-  const { state, removeWord, ready, dueWords, addWord } = useWordtrail();
+  const { state, settings, removeWord, ready, dueWords, addWord } = useWordtrail();
   const visibleWords = ready ? state.words : [];
   const [filter, setFilter] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export function VocabularyPage() {
     return visibleWords.filter((word) => {
       const normalized = word.normalized.trim().toLowerCase();
       const matches =
-        `${word.term} ${word.translation || ""} ${word.definition || ""}`
+        `${word.term} ${word.definition || ""}`
           .toLowerCase()
           .includes(query);
       if (!matches || seen.has(normalized)) return false;
@@ -34,20 +35,25 @@ export function VocabularyPage() {
   }, [filter, visibleWords]);
   async function openWord(word: Word) {
     setSelectedWord(word);
+    if (word.definition?.trim()) return;
+
     setRefreshingWord(true);
-    const dictionary = await lookupWord(word.term).catch(() => ({}));
-    const refreshed = {
-      ...word,
-      ...dictionary,
-      term: word.term,
-      normalized: word.normalized,
-      translation: undefined,
-      translationOptions: undefined,
-      lookups: word.lookups,
-    };
-    setSelectedWord(refreshed);
-    addWord(refreshed);
-    setRefreshingWord(false);
+    try {
+      const dictionary = await lookupWord(word.term).catch(() => ({}));
+      const refreshed = {
+        ...word,
+        ...dictionary,
+        term: word.term,
+        normalized: word.normalized,
+        lookups: word.lookups,
+      };
+      // Keep the old server-backed definition visible until the updated record
+      // has been confirmed by Supabase.
+      await addWord(refreshed);
+      setSelectedWord(refreshed);
+    } finally {
+      setRefreshingWord(false);
+    }
   }
   return (
     <section>
@@ -78,24 +84,29 @@ export function VocabularyPage() {
         <div className="stat-card stat-card-home">
           <strong className="stat-icon stat-value">
             {ready
-              ? new Set(
-                  state.readingSessions
-                    .map((session) => session.date)
-                    .filter(Boolean),
-                ).size
+              ? readingGoalStreak(
+                  state.readingSessions,
+                  state.activeReadingSession,
+                  settings.dailyGoal,
+                )
               : 0}
           </strong>
-          <small>dias lendo em sequência</small>
+          <small>dias seguidos com a meta batida</small>
         </div>
       </div>
       <VocabularySearch words={visibleWords} onSearch={setFilter} />
       <div className="word-table">
-        {ready &&
+        {!ready ? (
+          <div className="server-data-loading" role="status">
+            <span className="loading-spinner" aria-hidden="true" />
+            <span>Carregando seu vocabulário…</span>
+          </div>
+        ) : (
           (filteredWords.length ? (
             filteredWords.map((word) => (
               <article
                 className="word-row vocabulary-word-row"
-                key={word.normalized}
+                key={word.normalized.trim().toLowerCase() || word.term.trim().toLowerCase()}
                 onClick={() => void openWord(word)}
                 role="button"
                 tabIndex={0}
@@ -125,10 +136,10 @@ export function VocabularyPage() {
             ))
           ) : (
             <div className="empty-state">
-              <strong>Seu vocabulário começa com uma curiosidade</strong>
               Pesquise uma palavra durante a leitura pra começar.
             </div>
-          ))}
+          ))
+        )}
       </div>
       {selectedWord && (
         <WordDetailsModal

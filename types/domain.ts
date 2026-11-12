@@ -10,8 +10,6 @@ export type Word = {
   inflections?: string[];
   relatedWords?: string[];
   partOfSpeech?: string;
-  translation?: string;
-  translationOptions?: string[];
   phonetic?: string;
   audio?: string;
   lookups: number;
@@ -21,6 +19,7 @@ export type Word = {
   dueAt?: string;
   intervalDays?: number;
   correctStreak?: number;
+  lookupAggregateVersion?: 1;
 };
 
 export type ReadingSession = {
@@ -58,7 +57,7 @@ export type ReadingLookup = {
   at: string;
   term: string;
   normalized: string;
-  translation?: string;
+  definition?: string;
   wasKnown?: boolean;
 };
 

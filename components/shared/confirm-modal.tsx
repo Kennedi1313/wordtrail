@@ -31,9 +31,6 @@ export function ConfirmModal({
         </div>
         <p className="modal-note">{message}</p>
         <div className="discard-confirm-actions">
-          <button className="button outline" onClick={onCancel}>
-            Cancelar
-          </button>
           <button className="button discard-confirm-button" onClick={onConfirm}>
             {confirmLabel}
           </button>

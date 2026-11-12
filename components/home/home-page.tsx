@@ -1,43 +1,39 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { useWordtrail } from "@/hooks/use-wordtrail";
 import { WordCountBadge } from "@/components/shared/stat-cards";
 import { GoalCard } from "@/components/shared/goal-card";
 import { StartCard } from "@/components/shared/start-card";
-
-const toLocalDateString = (dateInput: string | Date | number | null | undefined): string | null => {
-  if (!dateInput) return null;
-
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return null;
-
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Fortaleza', 
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-
-  return formatter.format(d);
-};
+import { localReadingDate, readingGoalStreak, readingMinutesByDate } from "@/services/reading-stats";
 
 export function HomePage() {
   const { state, settings, ready } = useWordtrail();
-  const words = ready ? state.words : [];
+  const words = useMemo(() => {
+    if (!ready) return [];
+    const unique = new Map<string, (typeof state.words)[number]>();
+    state.words.forEach((word) => {
+      const key = word.normalized.trim().toLowerCase() || word.term.trim().toLowerCase();
+      if (!unique.has(key)) unique.set(key, word);
+    });
+    return [...unique.values()];
+  }, [ready, state.words]);
   const lookupCount = words.reduce((sum, word) => sum + word.lookups, 0);
-  const today = toLocalDateString(new Date());
-  const todayMinutes = Math.floor(
-    state.readingSessions
-      .filter((session) => toLocalDateString(session.date) === today)
-      .reduce((total, session) => total + (session.seconds || 0), 0) / 60,
+  const now = Date.now();
+  const today = localReadingDate(now);
+  const minutesByDate = readingMinutesByDate(
+    state.readingSessions,
+    state.activeReadingSession,
+    now,
   );
-
-  const readingDays = new Set(
-    state.readingSessions
-      .map((session) => toLocalDateString(session.date))
-      .filter(Boolean),
-  ).size;
+  const todayMinutes = minutesByDate.get(today) || 0;
+  const readingDays = readingGoalStreak(
+    state.readingSessions,
+    state.activeReadingSession,
+    settings.dailyGoal,
+    now,
+  );
   
   return (
     <>
@@ -52,7 +48,7 @@ export function HomePage() {
           description="Inicie uma sessão, leia no seu ritmo e pesquise palavras sem perder o fio."
           action={
             <Link className="button" href="/reading">
-              Começar uma leitura →
+              Começar uma leitura
             </Link>
           }
         />
@@ -82,7 +78,7 @@ export function HomePage() {
           <strong className="stat-icon stat-value">
             {ready ? readingDays : 0}
           </strong>
-          <small>dias lendo em sequência</small>
+          <small>dias seguidos com a meta batida</small>
         </div>
         <div className="stat-card stat-card-home">
           <strong className="stat-icon stat-value">
@@ -103,13 +99,18 @@ export function HomePage() {
             </Link>
           </div>
           <div className="panel">
-            {words.length ? (
+            {!ready ? (
+              <div className="server-data-loading" role="status">
+                <span className="loading-spinner" aria-hidden="true" />
+                <span>Carregando suas palavras…</span>
+              </div>
+            ) : words.length ? (
               words.slice(0, 5).map((word) => (
-                <div className="word-row" key={word.normalized}>
+                <div className="word-row" key={word.normalized.trim().toLowerCase() || word.term.trim().toLowerCase()}>
                   <div className="word-meta">
                     <strong>{word.term}</strong>
                     <small>
-                      {word.translation || "Tradução não encontrada"}
+                      {word.definition || "Definição indisponível"}
                     </small>
                   </div>
                   <WordCountBadge count={word.lookups} />
@@ -117,7 +118,6 @@ export function HomePage() {
               ))
             ) : (
               <div className="empty-state">
-                <strong>Sua primeira palavra começa aqui</strong>
                 Pesquise algo que encontrou no livro e seu vocabulário vai
                 crescendo.
               </div>
@@ -132,16 +132,20 @@ export function HomePage() {
             </div>
           </div>
           <div className="panel">
-            {state.readingSessions.length ? (
+            {!ready ? (
+              <div className="server-data-loading" role="status">
+                <span className="loading-spinner" aria-hidden="true" />
+                <span>Carregando sua atividade…</span>
+              </div>
+            ) : state.readingSessions.length ? (
               <div className="activity-list">
                 {words.slice(0, 2).map((word) => (
-                  <div className="activity-item" key={word.normalized}>
+                  <div className="activity-item" key={word.normalized.trim().toLowerCase() || word.term.trim().toLowerCase()}>
                     <span className="activity-dot" />
                     <div>
                       <strong>Você pesquisou {word.term}</strong>
                       <small>
-                        {word.translation || "Tradução indisponível"} ·{" "}
-                        {word.lookups} consulta{word.lookups === 1 ? "" : "s"}
+                        {word.definition || "Definição indisponível"}
                       </small>
                     </div>
                   </div>
@@ -167,7 +171,6 @@ export function HomePage() {
               </div>
             ) : (
               <div className="empty-state">
-                <strong>Tudo começa na próxima página</strong>
                 Sua atividade vai aparecer aqui assim que você começar.
               </div>
             )}
@@ -176,7 +179,7 @@ export function HomePage() {
       </section>
       <section className="section-heading game-section-heading">
         <div>
-          <h2>Uma pausa de cinco minutinhos?</h2>
+          <h2>Uma pausa?</h2>
           <p>Relembre palavras enquanto elas ainda estão fresquinhas.</p>
         </div>
         <Link className="button" href="/practice">

@@ -33,7 +33,7 @@ export function PracticeSetup({
         <StartCard
           className="practice-game-start-card"
           eyebrow="SUA PRÓXIMA RODADA"
-          title="Pronto para brincar com as palavras?"
+          title="Pronto para relembrar as palavras?"
           action={
             <button
               className="button practice-hero-cta"
@@ -116,7 +116,7 @@ export function PracticeSetup({
             value: reviews.filter((review) => review.correct).length,
             label: "lembradas de primeira",
           },
-          { value: words, label: "palavras para revisar" },
+          { value: words, label: "palavras disponíveis nos games" },
           { value: vocabularySize, label: "palavras no vocabulário" },
         ]}
       />

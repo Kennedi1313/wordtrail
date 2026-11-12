@@ -9,26 +9,9 @@ import { SettingsModal } from "@/components/settings/settings-modal";
 import { useWordtrail } from "@/hooks/use-wordtrail";
 import { AuthGate } from "@/components/auth/auth-gate";
 import { useEffect, useState } from "react";
+import { readingGoalStreak } from "@/services/reading-stats";
 import { NavIcon } from "@/components/ui/nav-icon";
 import { Menu, Settings, X } from "lucide-react";
-
-const toLocalDateString = (
-  dateInput: string | Date | number | null | undefined,
-): string | null => {
-  if (!dateInput) return null;
-
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return null;
-
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Fortaleza",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  return formatter.format(d);
-};
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -42,33 +25,37 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   useEffect(() => setNavigating(false), [pathname]);
   useEffect(() => setHydrated(true), []);
-  const navigate = () => {
+  const navigate = (href: string) => {
     setMenuOpen(false);
-    setNavigating(true);
+    setNavigating(href.split("?")[0] !== pathname);
   };
   const searchParams = useSearchParams();
-  const { state, settings, ready } = useWordtrail();
-  const today = toLocalDateString(new Date());
-  const todayMinutes = Math.floor(
-    state.readingSessions
-      .filter((session) => toLocalDateString(session.date) === today)
-      .reduce((total, session) => total + (session.seconds || 0), 0) / 60,
-  );
-  const readingDays = hydrated
-    ? new Set(
-        state.readingSessions.map((session) => session.date).filter(Boolean),
-      ).size
+  const { state, settings, ready, syncError, syncPending, userId } = useWordtrail();
+  const readingDays = hydrated && ready
+    ? readingGoalStreak(
+        state.readingSessions,
+        state.activeReadingSession,
+        settings.dailyGoal,
+      )
     : 0;
-  const dailyGoal = hydrated ? settings.dailyGoal : 30;
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell${hydrated && syncPending ? " is-syncing" : ""}`}
+      aria-busy={hydrated && (syncPending || (!ready && Boolean(userId)))}
+    >
+      {hydrated && ((!ready && userId) || syncPending) ? (
+        <div className="server-sync-indicator" role="status" aria-live="polite">
+          <span className="loading-spinner" aria-hidden="true" />
+          <span>{!ready ? "Carregando seus dados…" : "Salvando no servidor…"}</span>
+        </div>
+      ) : null}
       <aside className={`sidebar${menuOpen ? " open" : ""}`} id="app-sidebar">
         <div className="sidebar-header">
           <Link
             className="brand"
             href="/"
             aria-label="Wordtrail início"
-            onClick={navigate}
+            onClick={() => navigate("/")}
           >
             <span className="brand-mark">
               <img src="/icons/icon.svg" alt="" />
@@ -101,60 +88,47 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             className={`nav-link ${pathname === "/" ? "active" : ""}`}
             href="/"
-            onClick={navigate}
+            onClick={() => navigate("/")}
           >
             <NavIcon name="home" /> Visão geral
           </Link>
           <Link
             className={`nav-link ${pathname === "/reading" ? "active" : ""}`}
             href="/reading"
-            onClick={navigate}
+            onClick={() => navigate("/reading")}
           >
             <NavIcon name="reading" /> Sessão de leitura
           </Link>
           <Link
             className={`nav-link ${pathname === "/practice" ? "active" : ""}`}
             href="/practice"
-            onClick={navigate}
+            onClick={() => navigate("/practice")}
           >
             <NavIcon name="practice" /> Hora do jogo{" "}
           </Link>
           <Link
             className={`nav-link ${pathname === "/vocabulary" ? "active" : ""}`}
             href="/vocabulary"
-            onClick={navigate}
+            onClick={() => navigate("/vocabulary")}
           >
             <NavIcon name="vocabulary" /> Meu vocabulário
           </Link>
           <Link
             className={`nav-link ${pathname === "/books" ? "active" : ""}`}
             href="/books"
-            onClick={navigate}
+            onClick={() => navigate("/books")}
           >
             <NavIcon name="books" /> Meus livros
           </Link>
           <Link
             className={`nav-link ${pathname === "/clubs" ? "active" : ""}`}
             href="/clubs"
-            onClick={navigate}
+            onClick={() => navigate("/clubs")}
           >
             <NavIcon name="clubs" /> Clubes do livro
           </Link>
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <p>Uma página de cada vez.</p>
-            <div className="note-progress">
-              <span
-                style={{
-                  width: `${Math.min(100, (todayMinutes / dailyGoal) * 100)}%`,
-                }}
-              />
-            </div>
-            <small>
-              {todayMinutes} de {dailyGoal} min hoje
-            </small>
-          </div>
           <div className="sidebar-account">
             <AccountControls />
           </div>
@@ -162,7 +136,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <main className="main-area">
         <header className="mobile-header">
-          <Link className="brand" href="/" onClick={navigate}>
+          <Link className="brand" href="/" onClick={() => navigate("/")}>
             <span className="brand-mark">
               <img src="/icons/icon.svg" alt="" />
             </span>
@@ -183,7 +157,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
             </div>
             <div className="topbar-actions">
-              <Link className="topbar-streak" href="/reading">
+              <Link
+                className="topbar-streak"
+                href="/reading"
+                aria-label={`${readingDays} dias consecutivos com a meta de leitura atingida`}
+                title="Dias consecutivos batendo sua meta de leitura"
+              >
                 <span>🔥</span>
                 <strong suppressHydrationWarning>
                   {ready ? readingDays : 0}
@@ -192,6 +171,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </header>
           <div className="view-content">{children}</div>
+          {syncError && (
+            <div className="sync-error" role="alert">
+              Não foi possível salvar no servidor. Nenhuma alteração local foi aplicada.
+            </div>
+          )}
         </div>
       </main>
       {searchParams.get("settings") === "1" && <SettingsModal />}

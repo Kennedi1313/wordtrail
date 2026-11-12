@@ -16,16 +16,21 @@ import {
 
 type ClubView = { club: Club; members: ClubMember[] };
 export default function ClubsPage() {
-  const { userId, state, settings, displayName } = useWordtrail();
+  const { userId, state, settings, displayName, ready } = useWordtrail();
   const [clubs, setClubs] = useState<ClubView[]>([]);
+  const [clubsLoaded, setClubsLoaded] = useState(false);
   const [name, setName] = useState("");
-  const [bookTitle, setBookTitle] = useState("");
-  const [bookAuthor, setBookAuthor] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState("");
   const [message, setMessage] = useState("");
   async function refresh() {
-    if (userId) setClubs(await loadClubs(userId));
+    if (!userId) return;
+    setClubsLoaded(false);
+    try {
+      setClubs(await loadClubs(userId));
+    } finally {
+      setClubsLoaded(true);
+    }
   }
   useEffect(() => {
     void refresh().catch((error) => setMessage(error.message));
@@ -34,15 +39,8 @@ export default function ClubsPage() {
     event.preventDefault();
     if (!userId) return setMessage("Faça login para criar um clube.");
     try {
-      await createClub(userId, { name, bookTitle, bookAuthor });
-      void syncClubReadingProfile(
-        userId,
-        buildClubReadingProfile(state, settings, displayName),
-      ).catch((error) => console.error("Club profile sync failed", error));
+      await createClub({ name });
       setName("");
-      setBookTitle("");
-      setBookAuthor("");
-      setMessage("Clube criado.");
       await refresh();
     } catch (error) {
       setMessage(
@@ -50,6 +48,13 @@ export default function ClubsPage() {
           ? error.message
           : "Não foi possível criar o clube.",
       );
+      return;
+    }
+    try {
+      await syncClubReadingProfile(userId, buildClubReadingProfile(state, settings, displayName));
+      setMessage("Clube criado.");
+    } catch {
+      setMessage("Clube criado, mas não foi possível sincronizar seu perfil de leitura.");
     }
   }
   function handleJoin(event: FormEvent) {
@@ -60,14 +65,9 @@ export default function ClubsPage() {
   async function confirmJoin() {
     if (!userId || !pendingInviteCode) return;
     try {
-      await joinClub(userId, pendingInviteCode);
-      void syncClubReadingProfile(
-        userId,
-        buildClubReadingProfile(state, settings, displayName),
-      ).catch((error) => console.error("Club profile sync failed", error));
+      await joinClub(pendingInviteCode);
       setInviteCode("");
       setPendingInviteCode("");
-      setMessage("Você entrou no clube.");
       await refresh();
     } catch (error) {
       setMessage(
@@ -75,6 +75,13 @@ export default function ClubsPage() {
           ? error.message
           : "Não foi possível entrar no clube.",
       );
+      return;
+    }
+    try {
+      await syncClubReadingProfile(userId, buildClubReadingProfile(state, settings, displayName));
+      setMessage("Você entrou no clube.");
+    } catch {
+      setMessage("Você entrou no clube, mas não foi possível sincronizar seu perfil de leitura.");
     }
   }
   return (
@@ -101,19 +108,6 @@ export default function ClubsPage() {
             value={name}
             onChange={(event) => setName(event.target.value)}
             required
-          />
-          <input
-            className="field"
-            placeholder="Livro atual"
-            value={bookTitle}
-            onChange={(event) => setBookTitle(event.target.value)}
-            required
-          />
-          <input
-            className="field"
-            placeholder="Autor (opcional)"
-            value={bookAuthor}
-            onChange={(event) => setBookAuthor(event.target.value)}
           />
           <button className="button club-form-submit" type="submit">
             <Plus size={17} />
@@ -162,6 +156,12 @@ export default function ClubsPage() {
           {clubs.length} {clubs.length === 1 ? "clube" : "clubes"}
         </span>
       </div>
+      {!ready || !clubsLoaded ? (
+        <div className="server-data-loading" role="status">
+          <span className="loading-spinner" aria-hidden="true" />
+          <span>Carregando seus clubes…</span>
+        </div>
+      ) : (
       <div className="book-library-grid">
         {clubs.map(({ club, members }) => {
           const mine = members.find((member) => member.user_id === userId);
@@ -186,8 +186,7 @@ export default function ClubsPage() {
               </div>
               <h3>{club.name}</h3>
               <p>
-                {club.book_title}
-                {club.book_author ? ` · ${club.book_author}` : ""}
+                Clube de leitura
               </p>
               <div className="club-list-card-footer">
                 <span>{members.length} participantes</span>
@@ -202,6 +201,7 @@ export default function ClubsPage() {
           );
         })}
       </div>
+      )}
     </section>
   );
 }

@@ -180,9 +180,6 @@ export function ClubForum({
               href={`/clubs/${clubId}/threads/${post.id}`}
               key={post.id}
             >
-              <span className="club-thread-icon">
-                <MessageCircle size={18} />
-              </span>
               <span className="club-thread-copy">
                 <strong>{post.title}</strong>
                 <small>

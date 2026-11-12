@@ -10,12 +10,16 @@ export function SettingsModal() {
   const pathname = usePathname();
   const [goal, setGoal] = useState(String(settings.dailyGoal));
   const [saved, setSaved] = useState(false);
-  function save(event: FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault();
     const value = Number(goal);
     if (Number.isInteger(value) && value >= 1 && value <= 1440) {
-      setSettings({ ...settings, dailyGoal: value });
-      setSaved(true);
+      try {
+        await setSettings({ ...settings, dailyGoal: value });
+        setSaved(true);
+      } catch {
+        setSaved(false);
+      }
       window.setTimeout(() => setSaved(false), 2500);
     }
   }
@@ -72,9 +76,8 @@ export function SettingsModal() {
             <option value="dark">Escuro</option>
           </select>
           <p className="modal-note">
-            Por enquanto, palavras e progresso ficam salvos neste navegador.
-            Configure o Supabase para sincronizar entre dispositivos. APIs
-            públicas podem ter limites ou indisponibilidade.
+            Palavras, sessões e progresso são salvos diretamente no servidor.
+            Se a conexão cair, a alteração não será aplicada.
           </p>
           <div className="form-actions">
             <button className="button" type="submit">

@@ -153,9 +153,11 @@ function BookCard({
 function CreateBookModal({
   onClose,
   onCreate,
+  saving,
 }: {
   onClose: () => void;
-  onCreate: (event: FormEvent<HTMLFormElement>) => void;
+  onCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  saving: boolean;
 }) {
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
@@ -224,8 +226,8 @@ function CreateBookModal({
             </select>
           </label>
           <div className="form-actions">
-            <button className="button" type="submit">
-              Cadastrar livro
+            <button className="button" type="submit" disabled={saving}>
+              {saving ? "Salvando no servidor…" : "Cadastrar livro"}
             </button>
           </div>
         </form>
@@ -238,6 +240,7 @@ export function BooksPage() {
   const { state, ready, setState } = useWordtrail();
   const [filter, setFilter] = useState<BookFilter>("reading");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [savingBook, setSavingBook] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const counts = useMemo<BookCounts>(
     () => ({
@@ -259,7 +262,7 @@ export function BooksPage() {
     [filter, state.books],
   );
 
-  function createBook(event: FormEvent<HTMLFormElement>) {
+  async function createBook(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const title = String(form.get("title") || "").trim();
@@ -268,31 +271,39 @@ export function BooksPage() {
     const language = form.get("language") === "pt" ? "pt" : "en";
     if (!title || !Number.isInteger(totalPages) || totalPages < 1) return;
     const now = new Date().toISOString();
-    setState((current) => ({
-      ...current,
-      books: [
-        {
-          id: crypto.randomUUID(),
-          title,
-          author: author || undefined,
-          totalPages,
-          currentPage: 0,
-          createdAt: now,
-          updatedAt: now,
-          language,
-        },
-        ...current.books,
-      ],
-    }));
-    setFilter("reading");
-    setIsCreateModalOpen(false);
+    setSavingBook(true);
+    try {
+      await setState((current) => ({
+        ...current,
+        books: [
+          {
+            id: crypto.randomUUID(),
+            title,
+            author: author || undefined,
+            totalPages,
+            currentPage: 0,
+            createdAt: now,
+            updatedAt: now,
+            language,
+          },
+          ...current.books,
+        ],
+      }));
+      setFilter("reading");
+      setIsCreateModalOpen(false);
+    } catch {
+      // The sync error is shown by AppShell; keep the form open for retry.
+    } finally {
+      setSavingBook(false);
+    }
   }
 
-  function deleteBook(bookId: string) {
-    setState((current) => ({
+  async function deleteBook(bookId: string) {
+    await setState((current) => ({
       ...current,
       books: current.books.filter((book) => book.id !== bookId),
     }));
+    setBookToDelete(null);
   }
   const emptyMessage = getEmptyMessage(filter);
 
@@ -323,7 +334,12 @@ export function BooksPage() {
           counts={counts}
           onChange={setFilter}
         />
-        {books.length ? (
+        {!ready ? (
+          <div className="server-data-loading" role="status">
+            <span className="loading-spinner" aria-hidden="true" />
+            <span>Carregando seus livros…</span>
+          </div>
+        ) : books.length ? (
           <div className="book-library-grid">
             {books.map((book) => (
               <BookCard
@@ -335,7 +351,6 @@ export function BooksPage() {
           </div>
         ) : (
           <div className="empty-state book-empty-state">
-            <strong>{emptyMessage.title}</strong>
             {emptyMessage.body}
           </div>
         )}
@@ -344,6 +359,7 @@ export function BooksPage() {
         <CreateBookModal
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={createBook}
+          saving={savingBook}
         />
       )}
       {bookToDelete && (
@@ -352,10 +368,7 @@ export function BooksPage() {
           message={`O livro "${bookToDelete.title}" e seu progresso serão removidos.`}
           confirmLabel="Excluir livro"
           onCancel={() => setBookToDelete(null)}
-          onConfirm={() => {
-            deleteBook(bookToDelete.id);
-            setBookToDelete(null);
-          }}
+          onConfirm={() => void deleteBook(bookToDelete.id).catch(() => undefined)}
         />
       )}
     </section>

@@ -108,23 +108,9 @@ export default function ClubThreadPage() {
         ← Voltar ao clube
       </Link>
       <div className="club-thread-detail-heading">
-        <span className="eyebrow">FÓRUM · {club.name}</span>
-        <h1>{post.title}</h1>
-        <p>
-          {post.author_id === userId ? "Você" : "Participante"} ·{" "}
-          {new Date(post.created_at).toLocaleDateString("pt-BR", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </p>
-      </div>
-      <article className="panel club-thread-original">
+        <span className="eyebrow">FÓRUM · {club.name} </span>
         <div className="club-thread-original-top">
-          <span className="club-post-avatar">
-            {post.author_id === userId ? "V" : "L"}
-          </span>
-          <strong>{post.author_id === userId ? "Você" : "Participante"}</strong>
+          <h1>{post.title}</h1>
           {(isAdmin || post.author_id === userId) && (
             <button
               className="club-icon-action"
@@ -136,6 +122,16 @@ export default function ClubThreadPage() {
             </button>
           )}
         </div>
+        <p>
+          {post.author_id === userId ? "Você" : "Participante"} ·{" "}
+          {new Date(post.created_at).toLocaleDateString("pt-BR", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+      </div>
+      <article className="panel">
         <p>{post.body}</p>
       </article>
       <section className="club-thread-reply-section">
